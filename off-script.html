@@ -168,11 +168,11 @@ nav.tabs .n{font:500 11px var(--mono);margin-left:5px;opacity:.75}
 @media (max-width:480px){.filters-panel{grid-template-columns:6.4rem minmax(0,1fr);column-gap:10px;padding-inline:14px}}
 .modal{position:fixed;inset:0;z-index:15;background:color-mix(in srgb,var(--bg) 55%,rgba(8,9,18,.6));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   display:grid;place-items:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));overflow-y:auto;animation:fade .2s ease both}
-.modal .card{width:min(600px,100%);position:relative;animation:rise .28s cubic-bezier(.2,.8,.2,1) both}
+.modal .card{width:100%;position:relative;animation:rise .28s cubic-bezier(.2,.8,.2,1) both}
 .modal .close{position:absolute;top:14px;right:14px;border:0;background:var(--surface-2);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--muted)}
 @keyframes fade{from{opacity:0}}@keyframes rise{from{opacity:0;transform:translateY(16px)}}
 @media (prefers-reduced-motion:reduce){.modal,.modal .card{animation:none}}
-@media (max-width:640px){.modal{padding:0;place-items:stretch}.modal .card{border-radius:0;min-height:100%}}
+@media (max-width:640px){.modal{padding:0;place-items:stretch}.modal-inner{width:100%;min-height:100%}.modal .card{border-radius:0;min-height:100%}}
 body.locked{overflow:hidden}
 .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 11px;font-size:13px;font-weight:600;background:var(--surface-2);border:0}
 .chip.sel{background:var(--sel);color:var(--sel-ink)}
@@ -219,11 +219,31 @@ body.locked{overflow:hidden}
 .a-later{background:var(--surface-2);color:var(--later)}
 .a-pass{background:var(--surface-2);color:var(--warn)}
 .a-pass[aria-expanded="true"]{background:var(--warn);color:var(--surface)}
-.reasons{padding:0 24px 20px;display:grid;gap:10px}
-.reasons p{margin:0;font-size:13px;color:var(--muted)}
-.reasons .grid{display:flex;flex-wrap:wrap;gap:8px}
-.reasons button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-size:13.5px;font-weight:600}
-.reasons button:hover{border-color:var(--warn);color:var(--warn)}
+.modal-inner{display:grid;width:min(600px,100%);position:relative}
+.reasons{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);padding:18px 18px 20px;display:grid;gap:12px;align-content:start}
+.reasons-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.reasons-head h3{margin:0;font:800 26px/1 var(--display);text-transform:uppercase}
+.reasons-hint{margin:0;font-size:13px;color:var(--muted)}
+.reasons section{display:grid;gap:5px}
+.reasons h4{margin:4px 0 1px;font:500 10.5px var(--mono);color:var(--faint);text-transform:uppercase;letter-spacing:.07em}
+.reasons section button{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 12px;font-size:13.5px;font-weight:600;text-align:left}
+.reasons section button:hover,.reasons section button:focus-visible{border-color:var(--warn);color:var(--warn)}
+.reasons-slot{display:none}
+@keyframes slidein{from{opacity:0;transform:translateX(-12px)}}
+@keyframes sheetup{from{transform:translateY(100%)}}
+/* wide screens: the reasons get a reserved column right of the card, so the card never moves */
+@media (min-width:1000px){
+  .modal-inner{width:auto;grid-template-columns:min(600px,calc(100vw - 400px)) 300px;gap:16px;align-items:start}
+  .reasons-slot{display:block}
+  .reasons{position:sticky;top:0;animation:slidein .22s cubic-bezier(.2,.8,.2,1) both}
+}
+/* narrower screens: the reasons rise as a sheet over the bottom of the card */
+@media (max-width:999px){
+  .reasons{position:fixed;left:0;right:0;bottom:0;z-index:16;max-height:78dvh;overflow-y:auto;border-radius:20px 20px 0 0;
+    padding-bottom:calc(20px + env(safe-area-inset-bottom,0px));box-shadow:0 -12px 40px rgba(0,0,0,.35);animation:sheetup .25s cubic-bezier(.2,.8,.2,1) both;max-width:640px;margin:0 auto}
+}
+@media (max-width:999px){.reasons section{grid-template-columns:repeat(2,minmax(0,1fr))}.reasons h4{grid-column:1/-1}.reasons section button{font-size:13px;padding:8px 10px}}
+@media (prefers-reduced-motion:reduce){.reasons{animation:none}}
 .skip{display:block;margin:-8px auto 16px;background:none;border:0;color:var(--faint);font-size:13px;text-decoration:underline}
 .empty{padding:40px 28px;text-align:center;color:var(--muted)}
 .empty h3{font:800 28px var(--display);text-transform:uppercase;color:var(--ink);margin:0 0 6px}
@@ -339,16 +359,15 @@ const PARENTS = [
   {id:"custom",label:"My tags",kids:[]},
 ];
 
-const REASONS = [
-  {id:"genre",label:"Not my genre"},
-  {id:"premise",label:"Premise doesn't grab me"},
-  {id:"dark",label:"Too dark or heavy"},
-  {id:"light",label:"Too light or cheesy"},
-  {id:"long",label:"Too long a commitment"},
-  {id:"quality",label:"Looks low quality"},
-  {id:"place",label:"Not this country or language"},
-  {id:"mood",label:"Not in the mood"},
+const REASON_GROUPS = [
+  {label:"Story & genre", items:[{id:"genre",label:"Not my genre"},{id:"premise",label:"Premise doesn't grab me"}]},
+  {label:"Tone", items:[{id:"dark",label:"Too dark or heavy"},{id:"light",label:"Too light or cheesy"}]},
+  {label:"Look & feel", items:[{id:"style",label:"Don't like the art style or aesthetic"},{id:"quality",label:"Looks low quality"}]},
+  {label:"Been there", items:[{id:"tried",label:"Tried it and didn't like it"}]},
+  {label:"Origin", items:[{id:"place",label:"Not this country or language"}]},
+  {label:"Right now", items:[{id:"long",label:"Too long a commitment"},{id:"mood",label:"Not in the mood"}]},
 ];
+const REASONS = REASON_GROUPS.flatMap(g=>g.items);
 const REASON_LABEL = Object.fromEntries(REASONS.map(r=>[r.id,r.label]));
 // Older records logged "already seen" as a pass reason; read them as Watched.
 const fixRec = d => d&&d.s==="pass"&&d.r==="seen" ? {...d,s:"seen",r:null} : d;
@@ -517,6 +536,7 @@ function buildLeaves(){
 /* ---------- feature model ---------- */
 const lenBucket = t => t.t==="m" ? (t.rt<90?"Under 90 min":t.rt<=120?"90 to 120 min":t.rt<=150?"2 to 2.5 hours":"Over 2.5 hours") : (t.s<=1?"1 season":t.s<=3?"2 to 3 seasons":"4+ seasons");
 const qBucket = r => r<6?"Rated under 6":r<7?"Rated 6 to 7":r<8?"Rated 7 to 8":"Rated 8+";
+const eraOf = t => t.y ? Math.floor(t.y/10)*10+"s" : "";
 function features(t, reason){
   const f=[]; const add=(key,w)=>f.push([key,w]);
   const ks = t.k.slice(0,12);
@@ -531,6 +551,8 @@ function features(t, reason){
     case "quality": add("q:"+qBucket(t.r),.6); break;
     case "place": t.c.forEach(c=>add("c:"+c,1)); add("l:"+t.l,.5); break;
     case "mood": t.g.forEach(g=>add("g:"+g,.15)); break;
+    case "style": t.g.filter(g=>g===16).forEach(g=>add("g:"+g,1)); if(eraOf(t)) add("era:"+eraOf(t),.6); t.c.forEach(c=>add("c:"+c,.4)); kwW(.3); break;
+    case "tried": t.g.forEach(g=>add("g:"+g,.5)); kwW(1.2); break;
     default: t.g.forEach(g=>add("g:"+g,.25)); kwW(.3);
   }
   return f;
@@ -549,7 +571,7 @@ function penaltyOf(t,w){
   const chk=(key,scale=1)=>{const v=w[key];if(v){p+=v*scale;hits.push([key,v*scale])}};
   t.g.forEach(g=>chk("g:"+g));
   const ks=t.k.slice(0,12); ks.forEach(k=>chk("k:"+k,1/Math.sqrt(ks.length||1)));
-  t.c.forEach(c=>chk("c:"+c)); chk("l:"+t.l); chk("len:"+lenBucket(t)); chk("q:"+qBucket(t.r));
+  t.c.forEach(c=>chk("c:"+c)); chk("l:"+t.l); chk("len:"+lenBucket(t)); chk("q:"+qBucket(t.r)); if(eraOf(t)) chk("era:"+eraOf(t));
   return {p,hits};
 }
 function featLabel(key){
@@ -558,6 +580,7 @@ function featLabel(key){
   if(kind==="k")return S.kwName[v]||"Theme "+v;
   if(kind==="c")return country(v);
   if(kind==="l")return language(v)+" language";
+  if(kind==="era")return "Made in the "+v;
   return v;
 }
 
@@ -699,7 +722,6 @@ function renderCard(){
     }
     why=`<div class="why">${bits.join(" ")}</div>`;
   }
-  const reasons = S.passOpen ? `<div class="reasons" id="reasons"><p>Why not? Your answer shapes future picks.</p><div class="grid">${REASONS.map(r=>`<button data-reason="${r.id}">${esc(r.label)}</button>`).join("")}</div></div>` : "";
   return `<article class="card" id="pickCard" role="dialog" aria-modal="true" aria-label="${esc(t.n)}">
     <button class="close" data-act="skip" title="Skip without deciding">Skip ✕</button>
     <div class="reel">
@@ -726,10 +748,17 @@ function renderCard(){
       <button class="a-later" data-act="later">Maybe later</button>
       <button class="a-pass" data-act="pass" aria-expanded="${S.passOpen}" aria-controls="reasons">Not interested</button>
     </div>
-    ${reasons}
   </article>`;
 }
 
+function renderReasons(){
+  if(!S.passOpen||!S.current) return `<div class="reasons-slot" aria-hidden="true"></div>`;
+  return `<aside class="reasons" id="reasons" aria-label="Why not interested">
+    <div class="reasons-head"><h3>Why not?</h3><button class="linkbtn" data-act="pass">Cancel</button></div>
+    <p class="reasons-hint">Pick the closest reason. It shapes which titles come up next.</p>
+    ${REASON_GROUPS.map(g=>`<section><h4>${esc(g.label)}</h4>${g.items.map(r=>`<button data-reason="${r.id}">${esc(r.label)}</button>`).join("")}</section>`).join("")}
+  </aside>`;
+}
 function rowMeta(d){ return [d.t==="m"?"Film":"Series", d.y, (d.g||[]).map(g=>S.genreName[g]).filter(Boolean).slice(0,3).join(", "), (d.c||[]).map(country).join(", ")].filter(Boolean).join(" · ") }
 function renderList(status){
   let items=Object.entries(S.decisions).filter(([,d])=>d.s===status).sort((a,b)=>b[1].at-a[1].at);
@@ -759,7 +788,7 @@ function renderList(status){
 
 function renderTaste(){
   const w=tasteWeights(); const entries=Object.entries(w).filter(([,v])=>v>.05).sort((a,b)=>b[1]-a[1]);
-  const fam={g:"Genres",k:"Themes",c:"Countries",l:"Languages",len:"Length",q:"Rating range"};
+  const fam={g:"Genres",k:"Themes",c:"Countries",l:"Languages",era:"Era",len:"Length",q:"Rating range"};
   const max=entries[0]?.[1]||1;
   const panels=Object.entries(fam).map(([f,label])=>{
     const list=entries.filter(([k])=>k.split(":")[0]===f).slice(0,f==="k"?14:8);
@@ -795,7 +824,7 @@ function render(){
   const m=$("#main"); if(S.tab!=="pick") S.modal=false;
   document.body.classList.toggle("locked",!!S.modal);
   document.body.classList.toggle("on-pick",S.tab==="pick");
-  if(S.tab==="pick") m.innerHTML=`<section class="view pick-layout">${renderWheel()}${renderFilters()}</section>${S.modal?`<div class="modal" id="modal">${renderCard()}</div>`:""}`;
+  if(S.tab==="pick") m.innerHTML=`<section class="view pick-layout">${renderWheel()}${renderFilters()}</section>${S.modal?`<div class="modal" id="modal"><div class="modal-inner">${renderCard()}${renderReasons()}</div></div>`:""}`;
   else if(S.tab==="taste") m.innerHTML=`<section class="view">${renderTaste()}</section>`;
   else if(S.tab==="settings") m.innerHTML=`<section class="view">${renderSettings()}</section>`;
   else m.innerHTML=`<section class="view">${renderList(S.tab)}</section>`;
@@ -900,7 +929,7 @@ document.addEventListener("change",async e=>{
 });
 document.addEventListener("keydown",e=>{
   if(e.target.matches("input,textarea")) return;
-  if(e.key==="Escape"){ if(document.querySelector(".sheet")) document.querySelector(".sheet").remove(); else if(S.modal&&S.current){ S.skipped.add(keyOf(S.current)); closeModal() } else if(S.modal) closeModal(); else if(S.open){ S.open=null; render() } }
+  if(e.key==="Escape"){ if(document.querySelector(".sheet")) document.querySelector(".sheet").remove(); else if(S.modal&&S.passOpen){ S.passOpen=false; render(); $("[data-act=pass]")?.focus() } else if(S.modal&&S.current){ S.skipped.add(keyOf(S.current)); closeModal() } else if(S.modal) closeModal(); else if(S.open){ S.open=null; render() } }
   if(S.tab!=="pick"||S.modal||document.querySelector(".sheet")) return;
   if(e.key===" "&&!e.target.closest("button")){ e.preventDefault(); hitMe() }
 });
