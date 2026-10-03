@@ -171,14 +171,23 @@ nav.tabs .n{font:500 11px var(--mono);margin-left:5px;opacity:.75}
 .modal .card{width:100%;position:relative;animation:rise .28s cubic-bezier(.2,.8,.2,1) both;
   height:var(--card-h);display:flex;flex-direction:column}
 .modal .card>*{flex:none}
-.modal .card .body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow-y:auto}
-.modal .card .body>*{flex:none}
-.modal .card .ov{flex:1 1 auto;min-height:4.6em;overflow-y:auto;padding-right:8px;scrollbar-width:thin;overscroll-behavior:contain}
+.modal .card .body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:10px;padding-inline:0;padding-bottom:12px}
+.pager{flex:1 1 auto;min-height:0;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.pager::-webkit-scrollbar{display:none}
+.pane{flex:0 0 100%;min-width:0;scroll-snap-align:start;scroll-snap-stop:always;display:flex;flex-direction:column;gap:14px;padding-inline:24px;min-height:0}
+.pane>*{flex:none}
+.pane-about .ov{flex:1 1 auto;min-height:3em;overflow-y:auto;padding-right:8px;scrollbar-width:thin;overscroll-behavior:contain}
+.pane-details{overflow-y:auto;scrollbar-width:thin;overscroll-behavior-y:contain}
+.dots{flex:none;display:flex;justify-content:center;gap:8px}
+.dots button{width:8px;height:8px;padding:0;border:0;border-radius:4px;background:var(--line);transition:width .2s,background .2s}
+.dots button[aria-selected="true"]{width:22px;background:var(--accent)}
+.dots button:hover{background:var(--muted)}
+.dots button[aria-selected="true"]:hover{background:var(--accent)}
 .modal .card .empty{margin:auto}
 .modal .close{position:absolute;top:14px;right:14px;border:0;background:var(--surface-2);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--muted)}
 @keyframes fade{from{opacity:0}}@keyframes rise{from{opacity:0;transform:translateY(16px)}}
 @media (prefers-reduced-motion:reduce){.modal,.modal .card{animation:none}}
-@media (max-width:640px){.modal{padding:0;place-items:stretch}.modal .modal-inner{--card-h:100dvh;width:100%}.modal .card{border-radius:0}.modal .card .ov{flex:none;min-height:0;overflow:visible;padding-right:0}}
+@media (max-width:640px){.modal{padding:0;place-items:stretch}.modal .modal-inner{--card-h:100dvh;width:100%}.modal .card{border-radius:0}}
 body.locked{overflow:hidden}
 .chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 11px;font-size:13px;font-weight:600;background:var(--surface-2);border:0}
 .chip.sel{background:var(--sel);color:var(--sel-ink)}
@@ -629,10 +638,12 @@ function hitMe(){
     pick=pool[i]; info=penaltyOf(pick,w);
   }
   const matched=S.prefs.selected.map(id=>S.leaves.get(id)).filter(l=>l&&l.test(pick)).map(l=>l.label);
-  S.current=pick; S.passOpen=false;
+  S.current=pick; S.passOpen=false; S.pane=0;
   S.why={wild:wild&&Object.keys(w).length>0, learned:Object.keys(w).length>0, pool:pool.length, matched, hits:info.hits.filter(h=>h[1]>.15).sort((a,b)=>b[1]-a[1]).slice(0,3)};
   S.open=null; openModal();
 }
+function showPane(i,smooth){ const pg=$("#pager"); if(!pg) return; S.pane=i; pg.scrollTo({left:i*pg.clientWidth,behavior:smooth&&!matchMedia("(prefers-reduced-motion: reduce)").matches?"smooth":"auto"}); syncDots() }
+function syncDots(){ document.querySelectorAll(".dots button").forEach(b=>b.setAttribute("aria-selected",String(+b.dataset.pane===S.pane))) }
 function openModal(){ S.returnTab=null; S.tab="pick"; S.modal=true; render(); $("#pickCard h2, #pickCard h3")?.focus() }
 // After a decision: "I'm watching it" ends the session; anything else moves straight to the next pick,
 // unless the popup was opened from a list, which is where the person goes back to.
@@ -758,15 +769,22 @@ function renderCard(){
       <div class="scores"><div class="score"><b>${t.v?t.r.toFixed(1):"–"}</b><span>/10 TMDB<br>${fmt(t.v)} votes</span></div><div class="meter" aria-hidden="true"><i style="width:${t.r*10}%"></i></div></div>
     </div>
     <div class="body">
-      <p class="ov">${esc(t.ov||"No synopsis available.")}</p>
-      <div class="tags">${t.g.map(g=>`<span class="g">${esc(S.genreName[g]||"")}</span>`).join("")}${kws.map(k=>`<span>${esc(k)}</span>`).join("")}</div>
-      <div class="links"><a href="https://www.netflix.com/search?q=${encodeURIComponent(t.n)}" target="_blank" rel="noopener">Find on Netflix ↗</a>${t.im?`<a href="https://www.imdb.com/title/${t.im}/" target="_blank" rel="noopener">IMDb ↗</a>`:""}<a href="https://www.themoviedb.org/${isFilm?"movie":"tv"}/${t.i}" target="_blank" rel="noopener">TMDB ↗</a></div>
-      ${why}
-      <dl class="facts">
-        ${t.d?`<dt>${isFilm?"Director":"Created by"}</dt><dd>${t.d.map(esc).join(", ")}</dd>`:""}
-        ${t.ca?`<dt>Starring</dt><dd>${t.ca.map(esc).join(", ")}</dd>`:""}
-        ${!isFilm&&t.st?`<dt>Status</dt><dd>${esc(t.st)}</dd>`:""}
-      </dl>
+      <div class="pager" id="pager">
+        <section class="pane pane-about" aria-label="Synopsis">
+        <p class="ov">${esc(t.ov||"No synopsis available.")}</p>
+        <div class="links"><a href="https://www.netflix.com/search?q=${encodeURIComponent(t.n)}" target="_blank" rel="noopener">Find on Netflix ↗</a>${t.im?`<a href="https://www.imdb.com/title/${t.im}/" target="_blank" rel="noopener">IMDb ↗</a>`:""}<a href="https://www.themoviedb.org/${isFilm?"movie":"tv"}/${t.i}" target="_blank" rel="noopener">TMDB ↗</a></div>
+        </section>
+        <section class="pane pane-details" aria-label="Details">
+        <div class="tags">${t.g.map(g=>`<span class="g">${esc(S.genreName[g]||"")}</span>`).join("")}${kws.map(k=>`<span>${esc(k)}</span>`).join("")}</div>
+        ${why}
+        <dl class="facts">
+          ${t.d?`<dt>${isFilm?"Director":"Created by"}</dt><dd>${t.d.map(esc).join(", ")}</dd>`:""}
+          ${t.ca?`<dt>Starring</dt><dd>${t.ca.map(esc).join(", ")}</dd>`:""}
+          ${!isFilm&&t.st?`<dt>Status</dt><dd>${esc(t.st)}</dd>`:""}
+        </dl>
+        </section>
+      </div>
+      <div class="dots" role="tablist" aria-label="Card pages"><button role="tab" data-pane="0" aria-label="Synopsis and links" aria-selected="${S.pane!==1}"></button><button role="tab" data-pane="1" aria-label="Tags, why this pick and credits" aria-selected="${S.pane===1}"></button></div>
     </div>
     <div class="actions">
       <button class="a-watch" data-act="watch">I'm watching it now</button>
@@ -851,10 +869,12 @@ function render(){
   const m=$("#main"); if(S.tab!=="pick") S.modal=false;
   document.body.classList.toggle("locked",!!S.modal);
   document.body.classList.toggle("on-pick",S.tab==="pick");
+  const keepPane=S.pane||0;
   if(S.tab==="pick") m.innerHTML=`<section class="view pick-layout">${renderWheel()}${renderFilters()}</section>${S.modal?`<div class="modal" id="modal"><div class="modal-inner">${renderCard()}${renderReasons()}</div></div>`:""}`;
   else if(S.tab==="taste") m.innerHTML=`<section class="view">${renderTaste()}</section>`;
   else if(S.tab==="settings") m.innerHTML=`<section class="view">${renderSettings()}</section>`;
   else m.innerHTML=`<section class="view">${renderList(S.tab)}</section>`;
+  if(S.modal&&keepPane) showPane(keepPane,false);
 }
 
 /* ---------- custom tag sheet ---------- */
@@ -911,6 +931,7 @@ document.addEventListener("click",async e=>{
     if(!on){ next=next.filter(x=>{const l=S.leaves.get(x); return !(l&&l.parent===leaf.parent&&(leaf.whole||l.whole))}); next.push(d.leaf) }
     P.selected=next; S.open=null; Store.savePrefs(); render(); return }
   if(d.closemodal){ closeModal(); return }
+  if(d.pane!=null){ showPane(+d.pane,true); return }
   if(d.unsel){ P.selected=P.selected.filter(x=>x!==d.unsel); Store.savePrefs(); render(); return }
   if(d.clear){ P.selected=[]; Store.savePrefs(); render(); return }
   if(d.mode){ P.mode=d.mode; Store.savePrefs(); render(); return }
@@ -956,7 +977,13 @@ document.addEventListener("change",async e=>{
     toast(`Imported ${n} decisions.`); render();
   }catch{ toast("That file isn't an Off Script export.") }
 });
+// Swiping the pager updates the dots.
+document.addEventListener("scroll",e=>{
+  if(e.target.id!=="pager") return;
+  const i=Math.round(e.target.scrollLeft/e.target.clientWidth); if(i!==S.pane){ S.pane=i; syncDots() }
+},true);
 document.addEventListener("keydown",e=>{
+  if(S.modal&&!S.passOpen&&(e.key==="ArrowRight"||e.key==="ArrowLeft")&&!e.target.matches("input,textarea")){ showPane(e.key==="ArrowRight"?1:0,true); return }
   if(e.target.matches("input,textarea")) return;
   if(e.key==="Escape"){ if(document.querySelector(".sheet")) document.querySelector(".sheet").remove(); else if(S.modal&&S.passOpen){ S.passOpen=false; render(); $("[data-act=pass]")?.focus() } else if(S.modal&&S.current){ S.skipped.add(keyOf(S.current)); closeModal() } else if(S.modal) closeModal(); else if(S.open){ S.open=null; render() } }
   if(S.tab!=="pick"||S.modal||document.querySelector(".sheet")) return;
