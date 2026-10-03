@@ -229,11 +229,15 @@ body.locked{overflow:hidden}
 .why b{color:var(--ink);font-weight:700}
 .links{display:flex;gap:14px;flex-wrap:wrap;font-size:13.5px;font-weight:600}
 .links a{color:var(--muted)}
-.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:16px 24px 20px;border-top:1px solid var(--line)}
+.actions{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;padding:16px 24px 20px;border-top:1px solid var(--line)}
 .actions button{border:0;border-radius:12px;padding:12px 8px;font-weight:700;font-size:14.5px}
 .a-watch{background:var(--good);color:var(--surface)}
 .a-seen{background:var(--surface-2);color:var(--place)}
-@media (max-width:560px){.actions{grid-template-columns:1fr 1fr}}
+.a-started{background:var(--surface-2);color:var(--good)}
+.actions .a-watch,.actions .a-started,.actions .a-seen{grid-column:span 2}
+.actions .a-later,.actions .a-pass{grid-column:span 3}
+@media (max-width:560px){.actions{grid-template-columns:1fr 1fr}.actions .a-watch{grid-column:1/-1}.actions .a-started,.actions .a-seen,.actions .a-later,.actions .a-pass{grid-column:span 1}}
+.row .state{display:inline-block;font:500 11.5px var(--mono);padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good);margin-right:6px}
 .a-later{background:var(--surface-2);color:var(--later)}
 .a-pass{background:var(--surface-2);color:var(--warn)}
 .a-pass[aria-expanded="true"]{background:var(--warn);color:var(--surface)}
@@ -653,12 +657,12 @@ function afterDecision(act){
 }
 function closeModal(){ S.modal=false; S.passOpen=false; render(); $("#hit")?.focus() }
 // Stored decision: {s:status, r:reason, rating, at, i, t, n, y, g, k, c, l, rt, seasons, cats}
-function decide(t,status,reason){
+function decide(t,status,reason,how){
   const key=keyOf(t), prev=S.decisions[key]||null;
-  Store.write(key,{s:status,r:reason||null,rating:t.r,at:Date.now(),i:t.i,t:t.t,n:t.n,y:t.y,g:t.g,k:t.k.slice(0,12),c:t.c,l:t.l,rt:t.rt,seasons:t.s||0,pc:t.pc||[],d:t.d||[],
+  Store.write(key,{s:status,r:reason||null,rating:t.r,at:Date.now(),i:t.i,t:t.t,n:t.n,y:t.y,g:t.g,k:t.k.slice(0,12),c:t.c,l:t.l,rt:t.rt,seasons:t.s||0,pc:t.pc||[],d:t.d||[],how:how||null,
     cats:S.prefs.selected.map(id=>S.leaves.get(id)?.label).filter(Boolean)});
   S.lastUndo={key,prev};
-  toast({watch:"Enjoy it. Added to Watching.",seen:"Marked as watched.",later:"Saved to your Later list.",pass:"Passed"+(reason?": "+REASON_LABEL[reason].toLowerCase():"")+"."}[status],true);
+  toast({watch:how==="started"?"Added to In progress.":"Enjoy it. Added to In progress.",seen:"Marked as watched.",later:"Saved to your Later list.",pass:"Passed"+(reason?": "+REASON_LABEL[reason].toLowerCase():"")+"."}[status],true);
 }
 // The feature model reads title fields (r = rating, s = seasons); map a stored decision onto them.
 const featuresFor = d => features({...d,r:d.rating,s:d.seasons}, d.r);
@@ -676,7 +680,7 @@ function counts(){ const c={watch:0,seen:0,later:0,pass:0}; for(const d of Objec
 
 function renderTabs(){
   const c=counts();
-  const tabs=[["pick","Pick"],["later","Later",c.later],["pass","Passed",c.pass],["watch","Watching",c.watch],["seen","Watched",c.seen],["taste","Taste"],["settings","Settings"]];
+  const tabs=[["pick","Pick"],["later","Later",c.later],["pass","Passed",c.pass],["watch","In progress",c.watch],["seen","Watched",c.seen],["taste","Taste"],["settings","Settings"]];
   $("#tabs").innerHTML=tabs.map(([id,l,n])=>`<button role="tab" id="tab-${id}" aria-selected="${S.tab===id}" data-tab="${id}">${l}${n!=null?`<span class="n">${n}</span>`:""}</button>`).join("");
 }
 
@@ -779,7 +783,8 @@ function renderCard(){
       <div class="links"><a href="https://www.netflix.com/search?q=${encodeURIComponent(t.n)}" target="_blank" rel="noopener">Find on Netflix ↗</a>${t.im?`<a href="https://www.imdb.com/title/${t.im}/" target="_blank" rel="noopener">IMDb ↗</a>`:""}<a href="https://www.themoviedb.org/${isFilm?"movie":"tv"}/${t.i}" target="_blank" rel="noopener">TMDB ↗</a></div>
     </div>
     <div class="actions">
-      <button class="a-watch" data-act="watch">I'm watching it</button>
+      <button class="a-watch" data-act="watch">I'm watching it now</button>
+      <button class="a-started" data-act="started" title="You're partway through or put it on hold">Started it</button>
       <button class="a-seen" data-act="seen">Watched it</button>
       <button class="a-later" data-act="later">Maybe later</button>
       <button class="a-pass" data-act="pass" aria-expanded="${S.passOpen}" aria-controls="reasons">Not interested</button>
@@ -801,7 +806,7 @@ function renderList(status){
   const head={
     later:["Later","Your shortlist. These never come up in the draw. Move one back whenever you like."],
     pass:["Passed","Everything you've turned down and why. Each reason feeds the taste profile. Restore a title to put it back in the draw."],
-    watch:["Watching","Titles you said yes to. Mark one finished to move it to Watched."],
+    watch:["In progress","Titles you're watching now or started and put on hold. Mark one finished to move it to Watched, or dropped if it lost you."],
     seen:["Watched","Titles you've already seen. They stay out of the draw and don't count against similar titles."]}[status];
   let filters="";
   if(status==="pass"){
@@ -811,10 +816,10 @@ function renderList(status){
   }
   const rows=items.map(([key,d])=>{
     const t=S.byKey.get(key); const date=new Date(d.at).toLocaleDateString("en-US",{month:"short",day:"numeric"});
-    const btns = status==="later" ? `<button data-row="watch" data-key="${key}">Watching it</button><button data-row="seen" data-key="${key}">Watched it</button><button data-row="pass" data-key="${key}">Not interested</button><button data-row="restore" data-key="${key}">Back to draw</button>`
-      : status==="watch" ? `<button data-row="seen" data-key="${key}">Finished it</button><button data-row="restore" data-key="${key}">Remove</button>`
+    const btns = status==="later" ? `<button data-row="watch" data-key="${key}">Watching it now</button><button data-row="seen" data-key="${key}">Watched it</button><button data-row="pass" data-key="${key}">Not interested</button><button data-row="restore" data-key="${key}">Back to draw</button>`
+      : status==="watch" ? `<button data-row="seen" data-key="${key}">Finished it</button><button data-row="dropped" data-key="${key}" title="Logs it as tried and didn't like it">Dropped it</button><button data-row="restore" data-key="${key}">Remove</button>`
       : `<button data-row="restore" data-key="${key}">${status==="pass"?"Restore":"Remove"}</button>`;
-    return `<div class="row"><div><h4>${esc(d.n)}<small>${date}</small></h4><div class="sub">${status==="pass"&&d.r?`<span class="reason">${esc(REASON_LABEL[d.r]||d.r)}</span>`:""}${esc(rowMeta(d))}${d.cats?.length?` · drawn from ${esc(d.cats.join(", "))}`:""}</div></div>
+    return `<div class="row"><div><h4>${esc(d.n)}<small>${date}</small></h4><div class="sub">${status==="watch"?`<span class="state">${d.how==="started"?"Started":"Watching now"}</span>`:""}${status==="pass"&&d.r?`<span class="reason">${esc(REASON_LABEL[d.r]||d.r)}</span>`:""}${esc(rowMeta(d))}${d.cats?.length?` · drawn from ${esc(d.cats.join(", "))}`:""}</div></div>
       <div class="btns">${btns}</div>
       ${t&&status==="later"?`<details><summary>Synopsis</summary>${esc(t.ov)}</details>`:""}
       ${!t?`<div class="sub" style="grid-column:1/-1">No longer in the Netflix US catalog.</div>`:""}</div>`;
@@ -928,13 +933,15 @@ document.addEventListener("click",async e=>{
     const t=S.current;
     if(d.act==="pass"){ S.passOpen=!S.passOpen; render(); if(S.passOpen) $("#reasons button")?.focus(); return }
     if(d.act==="skip"){ S.skipped.add(keyOf(t)); closeModal(); return }
-    decide(t,d.act); afterDecision(d.act); return;
+    if(d.act==="started"){ decide(t,"watch",null,"started"); afterDecision("started"); return }
+    decide(t,d.act,null,d.act==="watch"?"now":null); afterDecision(d.act); return;
   }
   if(d.reason && S.current){ decide(S.current,"pass",d.reason); afterDecision("pass"); return }
   if(d.row){
     const key=d.key, t=S.byKey.get(key), cur=S.decisions[key];
     if(d.row==="restore"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,null); toast(`${cur.n} is back in the draw.`,true); render(); return }
-    if(d.row==="watch"&&t){ decide(t,"watch"); render(); return }
+    if(d.row==="watch"&&t){ decide(t,"watch",null,"now"); render(); return }
+    if(d.row==="dropped"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,{...cur,s:"pass",r:"tried",how:null,at:Date.now()}); toast(`${cur.n} moved to Passed: tried it and didn't like it.`,true); render(); return }
     if(d.row==="seen"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,{...cur,s:"seen",r:null,at:Date.now()}); toast(`${cur.n} moved to Watched.`,true); render(); return }
     if(d.row==="pass"&&t){ S.current=t; S.why={undo:false,matched:[],hits:[],pool:eligible().length}; S.passOpen=true; Store.write(key,null); const back=S.tab; openModal(); S.returnTab=back; return }
   }
