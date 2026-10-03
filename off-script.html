@@ -350,7 +350,7 @@ const ArtifactBackend = {
   savePrefs(p){ this.prefQ=(this.prefQ||Promise.resolve()).then(()=>this.db.doc("prefs/main").set(p)).catch(e=>console.warn("prefs save",e)) },
 };
 
-// Firebase: users/{uid}/decisions/{key} and users/{uid}/settings/prefs, signed in with Google.
+// Firebase: offscript/{uid}/decisions/{key} and offscript/{uid}/settings/prefs, signed in with Google.
 const FirebaseBackend = {
   async load(){
     let cfg=null;
@@ -368,7 +368,7 @@ const FirebaseBackend = {
     this.unsubs?.forEach(f=>f()); this.unsubs=[];
     this.user=u; Store.remote=u?this:null; Store.migrated=false; renderAccount();
     if(!u){ Store.setLine(); return }
-    const {collection,doc,onSnapshot}=this.fs, base=`users/${u.uid}`;
+    const {collection,doc,onSnapshot}=this.fs, base=`offscript/${u.uid}`;
     this.unsubs.push(onSnapshot(collection(this.db,base+"/decisions"),snap=>{
       const remote={}; snap.forEach(d=>remote[d.id]=d.data()); Store.receiveDecisions(remote);
     },e=>{console.warn("decisions listener",e);toast("Couldn't load your history from your account.")}));
@@ -376,10 +376,10 @@ const FirebaseBackend = {
     Store.setLine();
   },
   write(key,rec){
-    const {doc,setDoc,deleteDoc}=this.fs, ref=doc(this.db,`users/${this.user.uid}/decisions/${key}`);
+    const {doc,setDoc,deleteDoc}=this.fs, ref=doc(this.db,`offscript/${this.user.uid}/decisions/${key}`);
     (rec?setDoc(ref,rec):deleteDoc(ref)).catch(Store.saveFailed);
   },
-  savePrefs(p){ const {doc,setDoc}=this.fs; setDoc(doc(this.db,`users/${this.user.uid}/settings/prefs`),p).catch(e=>console.warn("prefs save",e)) },
+  savePrefs(p){ const {doc,setDoc}=this.fs; setDoc(doc(this.db,`offscript/${this.user.uid}/settings/prefs`),p).catch(e=>console.warn("prefs save",e)) },
   async signIn(){
     const {GoogleAuthProvider,signInWithPopup,signInWithRedirect}=this.authLib, prov=new GoogleAuthProvider();
     try{ await signInWithPopup(this.auth,prov) }

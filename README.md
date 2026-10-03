@@ -29,7 +29,7 @@ Live site: https://jkw2lo.github.io/off-script/
 | `catalog.json` | Netflix US catalog from TMDB. |
 | `sync.mjs` | Refreshes `catalog.json`. Needs `TMDB_KEY` in `.env`. |
 | `firebase-config.js` | Your Firebase web config (not secret). |
-| `firestore.rules` | Firestore security rules: each user reads and writes only their own data. |
+| `firestore.rules` | Off Script's Firestore rule, to add to the shared project's rules. |
 | `.github/workflows/sync-catalog.yml` | Refreshes the catalog on the 1st of each month. Needs a `TMDB_KEY` repo secret. |
 
 ## Setup
@@ -43,18 +43,22 @@ node sync.mjs
 
 ### Firebase (Google sign-in)
 
-1. Create a project at https://console.firebase.google.com (Analytics not needed).
-2. **Build → Authentication → Get started → Sign-in method → Google → Enable.**
-3. **Authentication → Settings → Authorized domains → Add domain:** `jkw2lo.github.io`.
-4. **Build → Firestore Database → Create database** (production mode, any US location).
-   Then open the **Rules** tab, paste the contents of `firestore.rules`, and publish.
-5. **Project settings → General → Your apps → Web (`</>`)**, register an app, and copy the
-   `firebaseConfig` values into `firebase-config.js`. Commit and push.
+Uses the same Firebase project as Hanzi, Nihongo and Cantonese Quest (`hanzi-quest-3cf9c`),
+which already has Google sign-in enabled and `jkw2lo.github.io` as an authorized domain.
+Off Script's data lives under `offscript/<uid>/decisions/*` and `offscript/<uid>/settings/prefs`.
+
+One-time step: in **Firestore → Rules**, add the block from `firestore.rules` next to the
+existing `progress-*` blocks and publish. Don't replace the whole rules file.
 
 ### Monthly catalog refresh on GitHub
 
+The workflow runs on the 1st of each month and commits a fresh `catalog.json` when Netflix's
+lineup has changed. It needs the TMDB key as a repository secret (set once):
+
 ```bash
-gh secret set TMDB_KEY
+gh secret set TMDB_KEY --repo jkw2lo/off-script
 ```
+
+Run it on demand from the Actions tab or with `gh workflow run sync-catalog.yml`.
 
 Data from [TMDB](https://www.themoviedb.org). This product uses the TMDB API but is not endorsed or certified by TMDB.

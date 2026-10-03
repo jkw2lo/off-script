@@ -1,9 +1,9 @@
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    // Each person can only read and write their own history and settings.
-    match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+// Off Script's rule for the shared Firebase project (hanzi-quest-3cf9c).
+// Don't replace the project's rules with this file. Paste the match block
+// inside the existing `match /databases/{database}/documents { ... }`,
+// next to the progress-hanzi / progress-nihongo / progress-cantonese blocks.
+
+    match /offscript/{uid}/{document=**} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == uid;
     }
-  }
-}
