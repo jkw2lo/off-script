@@ -907,7 +907,10 @@ document.addEventListener("click",async e=>{
     const t=S.current;
     if(d.act==="pass"){ S.passOpen=!S.passOpen; render(); if(S.passOpen) $("#reasons button")?.focus(); return }
     if(d.act==="skip"){ S.skipped.add(keyOf(t)); closeModal(); return }
-    decide(t,d.act); closeModal(); return;
+    decide(t,d.act);
+    // Already seen it says nothing about tonight: go straight to the next pick.
+    if(d.act==="seen"){ hitMe(); return }
+    closeModal(); return;
   }
   if(d.reason && S.current){ decide(S.current,"pass",d.reason); closeModal(); return }
   if(d.row){
