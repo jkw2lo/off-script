@@ -78,7 +78,7 @@ nav.tabs .n{font:500 11px var(--mono);margin-left:5px;opacity:.75}
   .pick-layout .wheel{width:min(900px,100%,max(520px,calc(100dvh - 112px)));justify-self:center}
   .side-note{display:block!important;font:500 11px/1.5 var(--mono);color:var(--faint);padding-left:4px;margin:0;max-width:44ch}
   .pick-layout .side{position:sticky;top:16px;justify-self:end;width:auto;gap:8px}
-  .side-cols{grid-template-columns:150px 248px;align-items:start}
+  .side-cols{grid-template-columns:150px max-content;align-items:start}
   .pick-layout .draw-col{display:flex!important;flex-direction:column;align-items:flex-start;gap:6px;padding:11px 12px 12px}
   .pick-layout .draw-col .lbl{margin-bottom:2px}
   .pick-layout .draw-col .chip{max-width:100%;text-align:left;line-height:1.25}
@@ -89,10 +89,10 @@ nav.tabs .n{font:500 11px var(--mono);margin-left:5px;opacity:.75}
   .pick-layout .frow .ctl{padding-bottom:12px}
   .pick-layout .seg{display:flex;flex-direction:column;width:100%;border-radius:12px;gap:2px}
   .pick-layout .seg button{border-radius:9px;text-align:left;padding:7px 12px;font-size:13px}
-  .pick-layout .score-ctl{display:grid!important;grid-template-columns:auto auto 1fr;align-items:stretch;gap:10px!important}
+  .pick-layout .score-ctl{display:grid!important;grid-template-columns:auto auto auto;align-items:stretch;gap:10px!important}
   .pick-layout .vscale{display:flex;flex-direction:column;justify-content:space-between;font:500 10.5px var(--mono);color:var(--faint);text-align:right;padding-block:2px}
   .pick-layout .score-ctl input{writing-mode:vertical-lr;direction:rtl;width:28px;height:170px;flex:none;margin:0;cursor:pointer}
-  .pick-layout .score-ctl output{align-self:center;text-align:left;font-size:13px;min-width:0}
+  .pick-layout .score-ctl output{align-self:center;text-align:left;font-size:13px;min-width:3.2em}
   .pick-layout .poolline{text-align:left;padding-left:4px;font-size:11.5px}
 }
 @media (min-width:1000px) and (max-width:1199px){
@@ -688,7 +688,7 @@ function renderFilters(){
   <div class="poolline" id="poolLine">${fmt(eligible().length)} unseen titles match right now</div>
   <p class="side-note">Picks are drawn at random. Popularity and trending data are never used. ${esc($("#storeLine").textContent)}.</p></aside>`;
 }
-const scoreText = () => S.prefs.minRating>0 ? S.prefs.minRating.toFixed(1)+" & up" : "Any";
+const scoreText = () => S.prefs.minRating>0 ? S.prefs.minRating.toFixed(1)+"+" : "Any";
 
 function renderCard(){
   const t=S.current, w=S.why;
