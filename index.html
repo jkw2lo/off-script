@@ -331,6 +331,33 @@ body.locked{overflow:hidden}
 
 .account{display:flex;align-items:center;gap:8px;font-size:13px}
 .account .who{color:var(--muted);max-width:14em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qs-count{font:500 13px var(--mono);color:var(--muted);white-space:nowrap}
+.qs-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin:-2px 0 12px}
+.qs-legend span{display:inline-flex;align-items:center;gap:6px}
+.qs-legend i{width:12px;height:12px;border-radius:4px;display:inline-block}
+.qs-legend i.seen{background:var(--place)}
+.qs-legend i.disliked{background:var(--warn)}
+.qs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+@media (max-width:640px){.qs-tile{min-height:70px;padding:9px 10px}.qs-name{font-size:13.5px}}
+.qs-tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;min-height:78px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);transition:background .12s,border-color .12s}
+.qs-tile:hover{border-color:var(--muted)}
+.qs-name{font-weight:700;font-size:14px;line-height:1.2;text-wrap:balance}
+.qs-meta{font:500 11px var(--mono);color:var(--muted)}
+.qs-state{margin-top:auto;font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.qs-tile[data-state="seen"]{background:color-mix(in srgb,var(--place) 18%,var(--surface));border-color:var(--place)}
+.qs-tile[data-state="seen"] .qs-state{color:var(--place)}
+.qs-tile[data-state="disliked"]{background:color-mix(in srgb,var(--warn) 16%,var(--surface));border-color:var(--warn)}
+.qs-tile[data-state="disliked"] .qs-state{color:var(--warn)}
+.qs-more{display:flex;align-items:center;gap:14px;justify-content:center;margin-top:16px;font:500 12px var(--mono);color:var(--muted)}
+.qs-prompt{width:100%;background:var(--accent-soft);color:var(--ink);border-radius:14px;padding:12px 14px;display:grid;gap:10px;font-size:13.5px;line-height:1.45}
+.qs-prompt-btns{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+@media (min-width:1000px){
+  .pick-layout .qs-prompt{grid-column:2;grid-row:1;width:auto;max-width:420px;justify-self:end}
+  .pick-layout:has(.qs-prompt){grid-template-rows:auto 1fr}
+  .pick-layout:has(.qs-prompt) .wheel{grid-column:1;grid-row:1 / span 2}
+  .pick-layout:has(.qs-prompt) .side{grid-column:2;grid-row:2}
+}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 12px 10px 16px;border-radius:12px;display:flex;gap:14px;align-items:center;font-size:14px;box-shadow:var(--shadow);z-index:30;max-width:calc(100% - 32px)}
 .toast button{background:none;border:0;color:var(--accent);font-weight:700}
 .notice{background:var(--accent-soft);color:var(--ink);border-radius:12px;padding:10px 14px;font-size:14px;margin-top:14px}
@@ -414,6 +441,7 @@ const S = {
   leaves:new Map(),            // leafId -> {label, parent, place, test(t)}
   decisions:{},                // key -> rec
   prefs:{types:"both",minRating:6,minVotes:30,explore:0.2,mode:"all",selected:[],custom:[],forgotten:[]},
+  sortFilter:"all", sortLimit:40,
   open:null, tab:"pick", current:null, why:null, skipped:new Set(), passOpen:false, passFilter:"all", lastUndo:null,
 };
 const keyOf = t => t.t + t.i;
@@ -668,10 +696,12 @@ function afterDecision(act){
 }
 function closeModal(){ S.modal=false; S.passOpen=false; render(); $("#hit")?.focus() }
 // Stored decision: {s:status, r:reason, rating, at, i, t, n, y, g, k, c, l, rt, seasons, cats}
+function decisionRec(t,status,reason,how,cats){
+  return {s:status,r:reason||null,rating:t.r,at:Date.now(),i:t.i,t:t.t,n:t.n,y:t.y,g:t.g,k:t.k.slice(0,12),c:t.c,l:t.l,rt:t.rt,seasons:t.s||0,pc:t.pc||[],d:t.d||[],how:how||null,cats};
+}
 function decide(t,status,reason,how){
   const key=keyOf(t), prev=S.decisions[key]||null;
-  Store.write(key,{s:status,r:reason||null,rating:t.r,at:Date.now(),i:t.i,t:t.t,n:t.n,y:t.y,g:t.g,k:t.k.slice(0,12),c:t.c,l:t.l,rt:t.rt,seasons:t.s||0,pc:t.pc||[],d:t.d||[],how:how||null,
-    cats:S.prefs.selected.map(id=>S.leaves.get(id)?.label).filter(Boolean)});
+  Store.write(key,decisionRec(t,status,reason,how,S.prefs.selected.map(id=>S.leaves.get(id)?.label).filter(Boolean)));
   S.lastUndo={key,prev};
   toast({watch:how==="started"?"Added to In progress.":"Enjoy it. Added to In progress.",seen:"Marked as watched.",later:"Saved to your Later list.",pass:"Passed"+(reason?": "+REASON_LABEL[reason].toLowerCase():"")+"."}[status],true);
 }
@@ -691,7 +721,7 @@ function counts(){ const c={watch:0,seen:0,later:0,pass:0}; for(const d of Objec
 
 function renderTabs(){
   const c=counts();
-  const tabs=[["pick","Pick"],["later","Later",c.later],["pass","Passed",c.pass],["watch","In progress",c.watch],["seen","Watched",c.seen],["taste","Taste"],["settings","Settings"]];
+  const tabs=[["pick","Pick"],["later","Later",c.later],["pass","Passed",c.pass],["watch","In progress",c.watch],["seen","Watched",c.seen],["taste","Taste"],["sort","Quick sort"],["settings","Settings"]];
   $("#tabs").innerHTML=tabs.map(([id,l,n])=>`<button role="tab" id="tab-${id}" aria-selected="${S.tab===id}" data-tab="${id}">${l}${n!=null?`<span class="n">${n}</span>`:""}</button>`).join("");
 }
 
@@ -865,6 +895,51 @@ function renderTaste(){
     ${entries.length||passes.length?`<div class="taste">${reasonPanel}${panels}</div>`:`<div class="empty">No passes yet. Your profile builds as you turn titles down.</div>`}`;
 }
 
+/* ---------- Quick sort: clear out what you've already seen ----------
+   Tiles are the most-rated titles (the ones you're likeliest to have seen).
+   Tap once: watched. Tap again: watched, didn't like it (a "tried it" pass). Tap again: clear. */
+const SORT_FILTERS=[["all","All"],["m","Films"],["t","Series"],["asia","Asia"],["europe","Europe"],["americas","Americas"],["afar","Further afield"]];
+function sortState(d){ return !d?"none":d.s==="seen"?"seen":d.s==="pass"&&d.r==="tried"?"disliked":"other" }
+function sortPool(){
+  const f=S.sortFilter, region=PARENTS.find(p=>p.id===f);
+  const codes=region?new Set(region.kids.flatMap(k=>k[2].c)):null;
+  return S.cat.titles.filter(t=>(f==="m"||f==="t")?t.t===f:codes?t.c.some(c=>codes.has(c)):true)
+    .filter(t=>sortState(S.decisions[keyOf(t)])!=="other")
+    .sort((a,b)=>b.v-a.v);
+}
+function sortTile(t){
+  const st=sortState(S.decisions[keyOf(t)]);
+  const label={none:"",seen:"Watched",disliked:"Didn't like"}[st];
+  return `<button class="qs-tile" data-qs="${keyOf(t)}" data-state="${st}" aria-label="${esc(t.n)}${label?", "+label:""}">
+    <span class="qs-name">${esc(t.n)}</span><span class="qs-meta">${t.y||""} · ${t.t==="m"?"Film":"Series"}${t.c[0]?" · "+flag(t.c[0]):""}</span>
+    <span class="qs-state">${label}</span></button>`;
+}
+function sortCounts(){ let seen=0,dis=0; for(const d of Object.values(S.decisions)){ const st=sortState(d); if(st==="seen")seen++; else if(st==="disliked")dis++ } return {seen,dis} }
+function sortCountText(){ const c=sortCounts(); return `${fmt(c.seen)} watched · ${fmt(c.dis)} didn't like` }
+function renderSort(){
+  const pool=sortPool(), shown=pool.slice(0,S.sortLimit);
+  return `<div class="section-head"><div><h2>Quick sort</h2><p>Tap anything you've already seen so it never comes up as a pick. Tap again if you didn't like it, and a third time to clear. Untapped titles don't count either way. These are the most-rated titles, the ones you're likeliest to have seen.</p></div><div class="qs-count" id="qsCount">${sortCountText()}</div></div>
+    <div class="filters" role="group" aria-label="Show">${SORT_FILTERS.map(([id,l])=>`<button class="chip ${S.sortFilter===id?"sel":""}" data-sortf="${id}">${l}</button>`).join("")}</div>
+    <div class="qs-legend"><span><i class="seen"></i>Watched</span><span><i class="disliked"></i>Watched, didn't like it</span></div>
+    <div class="qs-grid">${shown.map(sortTile).join("")}</div>
+    ${pool.length>shown.length?`<div class="qs-more"><button class="btn" data-sortmore="1">Show ${Math.min(40,pool.length-shown.length)} more</button><span>${fmt(shown.length)} of ${fmt(pool.length)}</span></div>`:""}`;
+}
+function cycleSort(key){
+  const t=S.byKey.get(key); if(!t) return;
+  const st=sortState(S.decisions[key]);
+  const next = st==="none" ? decisionRec(t,"seen",null,null,["Quick sort"]) : st==="seen" ? decisionRec(t,"pass","tried",null,["Quick sort"]) : null;
+  Store.write(key,next);
+  // update just this tile and the counts, so the grid doesn't jump
+  const el=document.querySelector(`[data-qs="${key}"]`); if(el) el.outerHTML=sortTile(t);
+  const c=$("#qsCount"); if(c) c.textContent=sortCountText();
+  renderTabs();
+}
+
+function renderSortPrompt(){
+  if(S.prefs.sortPrompted||Object.keys(S.decisions).length>=20) return "";
+  return `<div class="qs-prompt"><div><b>Seen a lot of Netflix already?</b> Clear out what you've watched first, so picks aren't wasted on it. About two minutes.</div>
+    <div class="qs-prompt-btns"><button class="btn primary" data-sortstart="1">Start quick sort</button><button class="linkbtn" data-sortdismiss="1">Not now</button></div></div>`;
+}
 function renderSettings(){
   const P=S.prefs, syn=S.cat?new Date(S.cat.synced).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}):"";
   return `<div class="section-head"><div><h2>Settings</h2></div></div><div class="settings">
@@ -884,8 +959,9 @@ function render(){
   document.body.classList.toggle("locked",!!S.modal);
   document.body.classList.toggle("on-pick",S.tab==="pick");
   const keepPane=S.pane||0;
-  if(S.tab==="pick") m.innerHTML=`<section class="view pick-layout">${renderWheel()}${renderFilters()}</section>${S.modal?`<div class="modal" id="modal"><div class="modal-inner">${renderCard()}${renderReasons()}</div></div>`:""}`;
+  if(S.tab==="pick") m.innerHTML=`<section class="view pick-layout">${renderSortPrompt()}${renderWheel()}${renderFilters()}</section>${S.modal?`<div class="modal" id="modal"><div class="modal-inner">${renderCard()}${renderReasons()}</div></div>`:""}`;
   else if(S.tab==="taste") m.innerHTML=`<section class="view">${renderTaste()}</section>`;
+  else if(S.tab==="sort") m.innerHTML=`<section class="view">${renderSort()}</section>`;
   else if(S.tab==="settings") m.innerHTML=`<section class="view">${renderSettings()}</section>`;
   else m.innerHTML=`<section class="view">${renderList(S.tab)}</section>`;
   if(S.modal&&keepPane) showPane(keepPane,false);
@@ -967,6 +1043,10 @@ document.addEventListener("click",async e=>{
     if(d.row==="pass"&&t){ S.current=t; S.why={undo:false,matched:[],hits:[],pool:eligible().length}; S.passOpen=true; Store.write(key,null); const back=S.tab; openModal(); S.returnTab=back; return }
   }
   if(d.pf){ S.passFilter=d.pf; render(); return }
+  if(d.qs){ cycleSort(d.qs); return }
+  if(d.sortf){ S.sortFilter=d.sortf; S.sortLimit=40; render(); return }
+  if(d.sortmore){ S.sortLimit+=40; render(); return }
+  if(d.sortstart||d.sortdismiss){ P.sortPrompted=true; Store.savePrefs(); if(d.sortstart){ S.tab="sort"; window.scrollTo(0,0) } render(); return }
   if(d.forget){ P.forgotten=[...new Set([...P.forgotten,d.forget])]; Store.savePrefs(); render(); return }
   if(d.unforget){ P.forgotten=P.forgotten.filter(k=>k!==d.unforget); Store.savePrefs(); render(); return }
   if(b.id==="exportBtn"){
