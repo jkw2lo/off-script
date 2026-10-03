@@ -59,15 +59,33 @@ nav.tabs .n{font:500 11px var(--mono);margin-left:5px;opacity:.75}
 .pick-layout{display:grid;gap:18px;justify-items:center}
 .pick-layout .side{width:100%;max-width:720px;display:grid;gap:10px}
 @media (min-width:1000px){
-  .pick-layout{grid-template-columns:min(720px,max(520px,calc(100dvh - 170px)),calc(100vw - 480px)) minmax(330px,390px);justify-content:center;align-items:start;justify-items:stretch;gap:40px}
-  .pick-layout .wheel{width:100%}
-  .pick-layout .side{position:sticky;top:16px}
-  .pick-layout .poolline{text-align:left;padding-left:4px}
+  .wrap{max-width:1440px}
+  .pick-layout{grid-template-columns:minmax(0,1fr) 248px;align-items:start;justify-items:stretch;gap:24px}
+  .pick-layout .wheel{width:min(900px,100%,max(520px,calc(100dvh - 112px)));justify-self:center}
+  body.on-pick footer{display:none}
+  body.on-pick{padding-bottom:12px}
+}
+@media (min-width:1000px) and (max-width:1199px){
+  .brand small{display:none}
+  nav.tabs button{padding-inline:9px}
+  .side-note{display:block!important;font:500 11px/1.5 var(--mono);color:var(--faint);padding-left:4px}
+  .pick-layout .side{position:sticky;top:16px;justify-self:end;width:248px;gap:8px}
+  .pick-layout .filters-panel{grid-template-columns:minmax(0,1fr);padding:0 14px;border-radius:14px}
+  .pick-layout .frow>*{min-height:0;border-top:0;padding-block:0}
+  .pick-layout .frow .lbl{padding-block:11px 6px;border-top:1px solid var(--line);font-size:10.5px}
+  .pick-layout .frow:first-child .lbl{border-top:0}
+  .pick-layout .frow .ctl{padding-bottom:11px;gap:6px}
+  .pick-layout .seg button{padding:4px 9px;font-size:12.5px}
+  .pick-layout .chip{font-size:12.5px;padding:3px 9px}
+  .pick-layout .score-ctl{gap:10px!important}
+  .pick-layout .score-ctl output{font-size:12.5px;min-width:4.2em}
+  .pick-layout .poolline{text-align:left;padding-left:4px;font-size:11.5px}
 }
 
 /* wheel */
 .wheel{position:relative;width:min(720px,100%,max(520px,calc(100dvh - 170px)));aspect-ratio:1;container-type:inline-size}
 .orbit-head{display:none}
+.side-note{display:none}
 .wheel .guide{position:absolute;inset:0;pointer-events:none}
 .wheel .guide circle{fill:none;stroke:var(--line);stroke-width:.25;stroke-dasharray:.6 1.4}
 .node{position:absolute;left:50%;top:50%;border-radius:50%;display:grid;place-items:center;text-align:center;
@@ -642,7 +660,8 @@ function renderFilters(){
     <div class="frow"><span class="lbl">Content length</span><div class="ctl"><span class="seg" role="group" aria-label="Content length"><button data-type="both" aria-pressed="${P.types==="both"}">Both</button><button data-type="m" aria-pressed="${P.types==="m"}">Films</button><button data-type="t" aria-pressed="${P.types==="t"}">Series</button></span></div></div>
     <div class="frow"><label class="lbl" for="minRating">TMDB score</label><div class="ctl score-ctl"><input type="range" id="minRating" min="0" max="8.5" step="0.5" value="${P.minRating}" aria-describedby="scoreOut"><output id="scoreOut">${scoreText()}</output></div></div>
   </div>
-  <div class="poolline" id="poolLine">${fmt(eligible().length)} unseen titles match right now</div></aside>`;
+  <div class="poolline" id="poolLine">${fmt(eligible().length)} unseen titles match right now</div>
+  <p class="side-note">Picks are drawn at random. Popularity and trending data are never used. ${esc($("#storeLine").textContent)}.</p></aside>`;
 }
 const scoreText = () => S.prefs.minRating>0 ? S.prefs.minRating.toFixed(1)+" & up" : "Any";
 
@@ -764,6 +783,7 @@ function render(){
   renderTabs();
   const m=$("#main"); if(S.tab!=="pick") S.modal=false;
   document.body.classList.toggle("locked",!!S.modal);
+  document.body.classList.toggle("on-pick",S.tab==="pick");
   if(S.tab==="pick") m.innerHTML=`<section class="view pick-layout">${renderWheel()}${renderFilters()}</section>${S.modal?`<div class="modal" id="modal">${renderCard()}</div>`:""}`;
   else if(S.tab==="taste") m.innerHTML=`<section class="view">${renderTaste()}</section>`;
   else if(S.tab==="settings") m.innerHTML=`<section class="view">${renderSettings()}</section>`;
