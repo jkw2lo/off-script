@@ -773,14 +773,14 @@ function renderCard(){
     </div>
     <div class="body">
       <p class="ov">${esc(t.ov||"No synopsis available.")}</p>
+      <div class="tags">${t.g.map(g=>`<span class="g">${esc(S.genreName[g]||"")}</span>`).join("")}${kws.map(k=>`<span>${esc(k)}</span>`).join("")}</div>
+      <div class="links"><a href="https://www.netflix.com/search?q=${encodeURIComponent(t.n)}" target="_blank" rel="noopener">Find on Netflix ↗</a>${t.im?`<a href="https://www.imdb.com/title/${t.im}/" target="_blank" rel="noopener">IMDb ↗</a>`:""}<a href="https://www.themoviedb.org/${isFilm?"movie":"tv"}/${t.i}" target="_blank" rel="noopener">TMDB ↗</a></div>
+      ${why}
       <dl class="facts">
         ${t.d?`<dt>${isFilm?"Director":"Created by"}</dt><dd>${t.d.map(esc).join(", ")}</dd>`:""}
         ${t.ca?`<dt>Starring</dt><dd>${t.ca.map(esc).join(", ")}</dd>`:""}
         ${!isFilm&&t.st?`<dt>Status</dt><dd>${esc(t.st)}</dd>`:""}
       </dl>
-      <div class="tags">${t.g.map(g=>`<span class="g">${esc(S.genreName[g]||"")}</span>`).join("")}${kws.map(k=>`<span>${esc(k)}</span>`).join("")}</div>
-      ${why}
-      <div class="links"><a href="https://www.netflix.com/search?q=${encodeURIComponent(t.n)}" target="_blank" rel="noopener">Find on Netflix ↗</a>${t.im?`<a href="https://www.imdb.com/title/${t.im}/" target="_blank" rel="noopener">IMDb ↗</a>`:""}<a href="https://www.themoviedb.org/${isFilm?"movie":"tv"}/${t.i}" target="_blank" rel="noopener">TMDB ↗</a></div>
     </div>
     <div class="actions">
       <button class="a-watch" data-act="watch">I'm watching it now</button>
