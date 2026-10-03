@@ -629,7 +629,14 @@ function hitMe(){
   S.why={wild:wild&&Object.keys(w).length>0, learned:Object.keys(w).length>0, pool:pool.length, matched, hits:info.hits.filter(h=>h[1]>.15).sort((a,b)=>b[1]-a[1]).slice(0,3)};
   S.open=null; openModal();
 }
-function openModal(){ S.tab="pick"; S.modal=true; render(); $("#pickCard h2, #pickCard h3")?.focus() }
+function openModal(){ S.returnTab=null; S.tab="pick"; S.modal=true; render(); $("#pickCard h2, #pickCard h3")?.focus() }
+// After a decision: "I'm watching it" ends the session; anything else moves straight to the next pick,
+// unless the popup was opened from a list, which is where the person goes back to.
+function afterDecision(act){
+  if(S.returnTab){ const tab=S.returnTab; S.returnTab=null; S.modal=false; S.passOpen=false; S.tab=tab; render(); return }
+  if(act==="watch"){ closeModal(); return }
+  hitMe();
+}
 function closeModal(){ S.modal=false; S.passOpen=false; render(); $("#hit")?.focus() }
 // Stored decision: {s:status, r:reason, rating, at, i, t, n, y, g, k, c, l, rt, seasons, cats}
 function decide(t,status,reason){
@@ -907,18 +914,15 @@ document.addEventListener("click",async e=>{
     const t=S.current;
     if(d.act==="pass"){ S.passOpen=!S.passOpen; render(); if(S.passOpen) $("#reasons button")?.focus(); return }
     if(d.act==="skip"){ S.skipped.add(keyOf(t)); closeModal(); return }
-    decide(t,d.act);
-    // Already seen it says nothing about tonight: go straight to the next pick.
-    if(d.act==="seen"){ hitMe(); return }
-    closeModal(); return;
+    decide(t,d.act); afterDecision(d.act); return;
   }
-  if(d.reason && S.current){ decide(S.current,"pass",d.reason); closeModal(); return }
+  if(d.reason && S.current){ decide(S.current,"pass",d.reason); afterDecision("pass"); return }
   if(d.row){
     const key=d.key, t=S.byKey.get(key), cur=S.decisions[key];
     if(d.row==="restore"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,null); toast(`${cur.n} is back in the draw.`,true); render(); return }
     if(d.row==="watch"&&t){ decide(t,"watch"); render(); return }
     if(d.row==="seen"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,{...cur,s:"seen",r:null,at:Date.now()}); toast(`${cur.n} moved to Watched.`,true); render(); return }
-    if(d.row==="pass"&&t){ S.current=t; S.why={undo:false,matched:[],hits:[],pool:eligible().length}; S.passOpen=true; Store.write(key,null); openModal(); return }
+    if(d.row==="pass"&&t){ S.current=t; S.why={undo:false,matched:[],hits:[],pool:eligible().length}; S.passOpen=true; Store.write(key,null); const back=S.tab; openModal(); S.returnTab=back; return }
   }
   if(d.pf){ S.passFilter=d.pf; render(); return }
   if(d.forget){ P.forgotten=[...new Set([...P.forgotten,d.forget])]; Store.savePrefs(); render(); return }
