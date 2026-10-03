@@ -1,0 +1,867 @@
+<meta charset="utf-8">
+<title>Off Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#E9EBF2; --surface:#F8F9FC; --surface-2:#DFE2EC; --line:#C9CDDB;
+  --ink:#15182E; --muted:#585E7D; --faint:#8A8FA8;
+  --accent:#E59A2F; --accent-ink:#1C1405; --accent-soft:#F6DDB4;
+  --place:#2F7A78; --place-soft:#CFE6E3;
+  --sel:#15182E; --sel-ink:#F8F9FC;
+  --good:#2C7A4B; --warn:#B4511F; --later:#4D58B8;
+  --shadow:0 1px 2px rgba(21,24,46,.08),0 8px 24px rgba(21,24,46,.08);
+  --display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#12131F; --surface:#1B1D2D; --surface-2:#252839; --line:#33374C;
+  --ink:#ECEDF5; --muted:#A3A7BE; --faint:#6F7390;
+  --accent:#F0AA45; --accent-ink:#1C1405; --accent-soft:#4A3517;
+  --place:#6FC2BC; --place-soft:#1F3A3A;
+  --sel:#ECEDF5; --sel-ink:#12131F;
+  --good:#6CCB91; --warn:#F08A5B; --later:#9AA3F5;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#12131F; --surface:#1B1D2D; --surface-2:#252839; --line:#33374C;
+  --ink:#ECEDF5; --muted:#A3A7BE; --faint:#6F7390;
+  --accent:#F0AA45; --accent-ink:#1C1405; --accent-soft:#4A3517;
+  --place:#6FC2BC; --place-soft:#1F3A3A;
+  --sel:#ECEDF5; --sel-ink:#12131F;
+  --good:#6CCB91; --warn:#F08A5B; --later:#9AA3F5;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{color:var(--ink);font:15px/1.5 var(--body);padding-inline:20px;padding-block:0 48px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+a{color:inherit}
+.wrap{max-width:1240px;margin:0 auto}
+
+/* top bar */
+header.top{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding-block:18px 14px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:12px;margin-right:auto}
+.brand h1{font:900 34px/1 var(--display);letter-spacing:.01em;margin:0;text-transform:uppercase}
+.brand h1 span{color:var(--accent)}
+.brand small{font:500 12px var(--mono);color:var(--muted);letter-spacing:.02em}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap}
+nav.tabs button{background:none;border:0;padding:7px 12px;border-radius:999px;color:var(--muted);font-weight:600;font-size:14px}
+nav.tabs button[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+nav.tabs .n{font:500 11px var(--mono);margin-left:5px;opacity:.75}
+
+.view{padding-top:22px}
+.pick-layout{max-width:720px;margin:0 auto;display:grid;gap:18px}
+
+/* wheel */
+.wheel{position:relative;width:100%;aspect-ratio:1;max-width:720px;container-type:inline-size}
+.wheel .guide{position:absolute;inset:0;pointer-events:none}
+.wheel .guide circle{fill:none;stroke:var(--line);stroke-width:.25;stroke-dasharray:.6 1.4}
+.node{position:absolute;left:50%;top:50%;border-radius:50%;display:grid;place-items:center;text-align:center;
+  transform:translate(-50%,-50%) translate(var(--x),var(--y));transition:transform .35s cubic-bezier(.2,.8,.2,1),background .15s,border-color .15s,opacity .25s;line-height:1.1;padding:4px}
+.parent{width:12.2cqw;height:12.2cqw;background:var(--surface);border:1.5px solid var(--line);font-weight:700;font-size:max(11px,1.75cqw);box-shadow:var(--shadow)}
+.parent.place{border-color:color-mix(in srgb,var(--place) 55%,var(--line))}
+.parent:hover{border-color:var(--ink)}
+.parent.open{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.parent.whole{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.parent.whole.open{box-shadow:0 0 0 3px var(--ink),var(--shadow)}
+.child.all{background:var(--accent-soft)}
+.parent .badge{position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;border-radius:10px;background:var(--accent);color:var(--accent-ink);font:600 11px/20px var(--mono);padding:0 5px}
+.child{width:9.6cqw;height:9.6cqw;background:var(--surface-2);border:1.5px solid transparent;font-weight:600;font-size:max(10.5px,1.5cqw);animation:pop .3s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i)*18ms)}
+.child.place{background:var(--place-soft)}
+.child:hover{border-color:var(--ink)}
+.child[aria-pressed="true"]{background:var(--sel);color:var(--sel-ink)}
+.child .ct{display:block;font:500 max(9px,1.15cqw) var(--mono);opacity:.7;margin-top:2px}
+.child.add{border:1.5px dashed var(--muted);background:transparent}
+@keyframes pop{from{opacity:0;transform:translate(-50%,-50%) translate(calc(var(--x)*.7),calc(var(--y)*.7)) scale(.6)}}
+.hit{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:24cqw;height:24cqw;border-radius:50%;border:0;
+  background:var(--accent);color:var(--accent-ink);font:900 max(28px,5.4cqw)/.9 var(--display);text-transform:uppercase;letter-spacing:.02em;
+  box-shadow:0 0 0 1.2cqw color-mix(in srgb,var(--accent) 22%,transparent),var(--shadow);transition:transform .12s}
+.hit:hover{transform:translate(-50%,-50%) scale(1.03)}
+.hit:active{transform:translate(-50%,-50%) scale(.97)}
+.hit small{display:block;font:500 max(10px,1.3cqw)/1.2 var(--mono);text-transform:none;letter-spacing:0;margin-top:.8cqw;opacity:.8}
+@media (prefers-reduced-motion:reduce){.node,.child{transition:none;animation:none}}
+
+/* compact (phone) wheel */
+@media (max-width:640px){
+  .wheel{aspect-ratio:auto;display:flex;flex-direction:column;gap:12px;align-items:stretch}
+  .wheel .guide{display:none}
+  .node,.hit{position:static;transform:none!important;animation:none}
+  .hit{width:100%;height:auto;border-radius:18px;padding:18px;font-size:40px;order:-1}
+  .hit small{font-size:12px}
+  .ring,.orbit{display:flex;flex-wrap:wrap;gap:8px}
+  .parent,.child{width:auto;height:auto;border-radius:999px;padding:8px 14px;font-size:14px;position:relative}
+  .child .ct{display:inline;margin:0 0 0 6px;font-size:11px}
+  .orbit:empty{display:none}
+}
+
+.filters-panel{background:var(--surface);border-radius:16px;padding:6px 18px;display:grid;grid-template-columns:8.5rem minmax(0,1fr);column-gap:16px}
+.frow{display:contents}
+.frow>*{padding-block:11px;border-top:1px solid var(--line);min-height:54px;display:flex;align-items:center}
+.frow:first-child>*{border-top:0}
+.frow .lbl{font:500 12px/1.3 var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.frow .ctl{flex-wrap:wrap;gap:8px}
+.score-ctl{gap:14px!important;flex-wrap:nowrap!important}
+.score-ctl input{flex:1;min-width:0;accent-color:var(--accent)}
+.score-ctl output{font:600 14px var(--mono);min-width:4.8em;text-align:right;font-variant-numeric:tabular-nums}
+.poolline{font:500 12px var(--mono);color:var(--muted);text-align:center}
+@media (max-width:480px){.filters-panel{grid-template-columns:6.4rem minmax(0,1fr);column-gap:10px;padding-inline:14px}}
+.modal{position:fixed;inset:0;z-index:15;background:color-mix(in srgb,var(--bg) 55%,rgba(8,9,18,.6));backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:grid;place-items:center;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));overflow-y:auto;animation:fade .2s ease both}
+.modal .card{width:min(600px,100%);position:relative;animation:rise .28s cubic-bezier(.2,.8,.2,1) both}
+.modal .close{position:absolute;top:14px;right:14px;border:0;background:var(--surface-2);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;color:var(--muted)}
+@keyframes fade{from{opacity:0}}@keyframes rise{from{opacity:0;transform:translateY(16px)}}
+@media (prefers-reduced-motion:reduce){.modal,.modal .card{animation:none}}
+@media (max-width:640px){.modal{padding:0;place-items:stretch}.modal .card{border-radius:0;min-height:100%}}
+body.locked{overflow:hidden}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 11px;font-size:13px;font-weight:600;background:var(--surface-2);border:0}
+.chip.sel{background:var(--sel);color:var(--sel-ink)}
+.chip.sel.place{background:var(--place);color:var(--bg)}
+.chip .x{opacity:.7}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:999px;padding:3px}
+.seg button{border:0;background:none;padding:4px 11px;border-radius:999px;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.linkbtn{background:none;border:0;padding:4px 6px;color:var(--muted);text-decoration:underline;font-size:13px}
+.poolline{font:500 12px var(--mono);color:var(--muted);margin-top:8px}
+
+/* pick card */
+.card{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+.card .reel{padding:22px 90px 18px 24px;border-bottom:1px solid var(--line)}
+.meta{display:flex;flex-wrap:wrap;gap:6px 12px;font:500 12px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.meta .type{color:var(--accent-ink);background:var(--accent);padding:1px 7px;border-radius:4px}
+.meta .cert{border:1px solid var(--line);padding:0 6px;border-radius:4px}
+.card h2{font:800 clamp(34px,4.4vw,48px)/.95 var(--display);text-transform:uppercase;margin:12px 0 4px;text-wrap:balance;letter-spacing:.005em}
+.card .orig{color:var(--muted);font-size:14px}
+.card .tag{font-style:italic;color:var(--muted);margin:8px 0 0}
+.scores{display:flex;gap:18px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.score{display:flex;align-items:baseline;gap:6px}
+.score b{font:800 34px/1 var(--display)}
+.score span{font:500 12px var(--mono);color:var(--muted)}
+.meter{flex:1;min-width:120px;height:6px;background:var(--surface-2);border-radius:3px;position:relative;overflow:hidden}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:3px}
+.card .body{padding:18px 24px;display:grid;gap:14px}
+.card .ov{margin:0;max-width:62ch}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px;margin:0}
+.facts dt{color:var(--muted);font:500 12px/1.9 var(--mono);text-transform:uppercase;letter-spacing:.04em}
+.facts dd{margin:0}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags span{font-size:12.5px;padding:2px 9px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.tags span.g{background:var(--accent-soft);color:var(--ink)}
+.why{background:var(--surface-2);border-radius:12px;padding:10px 14px;font-size:13.5px;color:var(--muted)}
+.why b{color:var(--ink);font-weight:700}
+.links{display:flex;gap:14px;flex-wrap:wrap;font-size:13.5px;font-weight:600}
+.links a{color:var(--muted)}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:16px 24px 20px;border-top:1px solid var(--line)}
+.actions button{border:0;border-radius:12px;padding:12px 8px;font-weight:700;font-size:14.5px}
+.a-watch{background:var(--good);color:var(--surface)}
+.a-seen{background:var(--surface-2);color:var(--place)}
+@media (max-width:560px){.actions{grid-template-columns:1fr 1fr}}
+.a-later{background:var(--surface-2);color:var(--later)}
+.a-pass{background:var(--surface-2);color:var(--warn)}
+.a-pass[aria-expanded="true"]{background:var(--warn);color:var(--surface)}
+.reasons{padding:0 24px 20px;display:grid;gap:10px}
+.reasons p{margin:0;font-size:13px;color:var(--muted)}
+.reasons .grid{display:flex;flex-wrap:wrap;gap:8px}
+.reasons button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-size:13.5px;font-weight:600}
+.reasons button:hover{border-color:var(--warn);color:var(--warn)}
+.skip{display:block;margin:-8px auto 16px;background:none;border:0;color:var(--faint);font-size:13px;text-decoration:underline}
+.empty{padding:40px 28px;text-align:center;color:var(--muted)}
+.empty h3{font:800 28px var(--display);text-transform:uppercase;color:var(--ink);margin:0 0 6px}
+
+/* lists */
+.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.section-head h2{font:800 36px/1 var(--display);text-transform:uppercase;margin:0}
+.section-head p{margin:4px 0 0;color:var(--muted);max-width:60ch}
+.rows{display:grid;gap:8px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;align-items:center;background:var(--surface);border-radius:14px;padding:12px 16px}
+.row h4{margin:0;font-size:16px}
+.row h4 small{font:500 12px var(--mono);color:var(--muted);margin-left:8px}
+.row .sub{font-size:13px;color:var(--muted)}
+.row .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.row .btns button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600}
+.row .reason{display:inline-block;font:500 11.5px var(--mono);padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn);margin-right:6px}
+.row details{grid-column:1/-1;font-size:13.5px;color:var(--muted)}
+.row details summary{cursor:pointer;font-size:12.5px}
+@media (max-width:640px){.row{grid-template-columns:1fr}.row .btns{justify-content:flex-start}}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+
+/* taste */
+.taste{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.panel{background:var(--surface);border-radius:16px;padding:16px 18px}
+.panel h3{margin:0 0 10px;font:700 13px var(--mono);text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.bar{display:grid;grid-template-columns:minmax(0,9.5em) 1fr auto;gap:10px;align-items:center;font-size:13.5px;padding:3px 0}
+.bar .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .tr{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}
+.bar .tr i{display:block;height:100%;background:var(--warn);border-radius:4px}
+.bar button{border:0;background:none;color:var(--faint);font-size:12px;text-decoration:underline;padding:2px}
+.how{font-size:14px;color:var(--muted);max-width:70ch}
+.how b{color:var(--ink)}
+
+/* settings */
+.settings{display:grid;gap:14px;max-width:720px}
+.setting{background:var(--surface);border-radius:14px;padding:14px 18px;display:grid;gap:8px}
+.setting label{font-weight:700}
+.setting .hint{font-size:13px;color:var(--muted);margin:0}
+.setting input[type=range]{width:100%;accent-color:var(--accent)}
+.setting .val{font:500 13px var(--mono);color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 14px;font-weight:600}
+.btn.danger{color:var(--warn)}
+
+/* custom tag dialog */
+.sheet{position:fixed;inset:0;background:rgba(10,11,20,.45);display:grid;place-items:center;padding:16px;z-index:20}
+.sheet .box{background:var(--surface);border-radius:18px;padding:20px;width:min(460px,100%);box-shadow:var(--shadow);display:grid;gap:12px}
+.sheet h3{margin:0;font:800 26px var(--display);text-transform:uppercase}
+.sheet input{width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow:auto}
+.sugg button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:13px}
+.sugg button[aria-pressed="true"]{background:var(--sel);color:var(--sel-ink);border-color:var(--sel)}
+
+.account{display:flex;align-items:center;gap:8px;font-size:13px}
+.account .who{color:var(--muted);max-width:14em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 12px 10px 16px;border-radius:12px;display:flex;gap:14px;align-items:center;font-size:14px;box-shadow:var(--shadow);z-index:30;max-width:calc(100% - 32px)}
+.toast button{background:none;border:0;color:var(--accent);font-weight:700}
+.notice{background:var(--accent-soft);color:var(--ink);border-radius:12px;padding:10px 14px;font-size:14px;margin-top:14px}
+footer{margin-top:36px;font:500 12px var(--mono);color:var(--faint);display:flex;gap:16px;flex-wrap:wrap}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>Off<span>/</span>Script</h1><small id="catalogLine">loading catalog…</small></div>
+    <nav class="tabs" role="tablist" id="tabs"></nav>
+    <div class="account" id="account" hidden></div>
+  </header>
+  <main id="main"></main>
+  <footer><span>Picks are drawn at random from the catalog. Popularity and trending data are never used.</span><span id="storeLine"></span></footer>
+</div>
+
+<script>
+/* ---------- data: categories ---------- */
+const G = {action:[28,10759],adventure:[12,10759],animation:[16],comedy:[35],crime:[80],doc:[99],drama:[18],family:[10751,10762],fantasy:[14,10765],history:[36],horror:[27],mystery:[9648],romance:[10749],scifi:[878,10765],thriller:[53],war:[10752,10768],western:[37],reality:[10764]};
+const C = (codes)=>({c:codes});
+const PARENTS = [
+  {id:"asia",label:"Asia",place:true,kids:[
+    ["jp","Japan",C(["JP"])],["kr","Korea",C(["KR"])],["cn","China",C(["CN"])],["hk","Hong Kong",C(["HK"])],["tw","Taiwan",C(["TW"])],
+    ["th","Thailand",C(["TH"])],["in","India",C(["IN"])],["ph","Philippines",C(["PH"])],["id","Indonesia",C(["ID"])],["sea","Vietnam, Malaysia, Singapore",C(["VN","MY","SG"])]]},
+  {id:"europe",label:"Europe",place:true,kids:[
+    ["uk","UK & Ireland",C(["GB","IE"])],["fr","France",C(["FR"])],["es","Spain",C(["ES"])],["de","Germany & Austria",C(["DE","AT"])],["it","Italy",C(["IT"])],
+    ["nordic","Nordic",C(["SE","NO","DK","FI","IS"])],["pl","Poland",C(["PL"])],["tr","Turkey",C(["TR"])],["benelux","Benelux",C(["NL","BE","LU"])],["east","Eastern Europe",C(["CZ","HU","RO","UA","RU","RS","HR","BG","SK"])]]},
+  {id:"americas",label:"Americas",place:true,kids:[
+    ["us","USA",C(["US"])],["ca","Canada",C(["CA"])],["mx","Mexico",C(["MX"])],["br","Brazil",C(["BR"])],["ar","Argentina",C(["AR"])],["co","Colombia",C(["CO"])],["latam","Chile, Peru & more",C(["CL","PE","VE","UY","EC","CU","DO"])]]},
+  {id:"afar",label:"Further afield",place:true,kids:[
+    ["ng","Nigeria",C(["NG"])],["za","South Africa",C(["ZA"])],["eg","Egypt",C(["EG"])],["il","Israel",C(["IL"])],["arab","Arab world",C(["SA","AE","LB","JO","MA","TN","KW","QA"])],["au","Australia",C(["AU"])],["nz","New Zealand",C(["NZ"])]]},
+  {id:"dark",label:"Dark",kids:[
+    ["horror","Horror",{g:G.horror,kw:["horror"]}],["thriller","Thriller",{g:G.thriller}],["crime","Crime",{g:G.crime}],["mystery","Mystery",{g:G.mystery}],
+    ["truecrime","True crime",{kw:["true crime"]}],["psych","Psychological",{kw:["psychological thriller","psychological horror","psychological drama"]}],["revenge","Revenge",{kw:["revenge"]}]]},
+  {id:"heart",label:"Heart",kids:[
+    ["romance","Romance",{g:G.romance,kw:["romance","love"]}],["drama","Drama",{g:G.drama}],["family","Family",{g:G.family}],["coming","Coming of age",{kw:["coming of age"]}],
+    ["friends","Friendship",{kw:["friendship"]}],["lgbt","LGBTQ+",{kw:["lgbt","gay","lesbian","queer","transgender"]}],["grief","Grief & loss",{kw:["grief","loss of loved one"]}]]},
+  {id:"laughs",label:"Laughs",kids:[
+    ["comedy","Comedy",{g:G.comedy}],["romcom","Romcom",{kw:["romantic comedy","romcom"],all:{g:[...G.comedy,...G.romance]}}],["darkcom","Dark comedy",{kw:["dark comedy","black comedy"]}],
+    ["satire","Satire",{kw:["satire","parody"]}],["sitcom","Sitcom",{kw:["sitcom"]}],["standup","Stand-up",{kw:["stand-up comedy"]}]]},
+  {id:"wonder",label:"Wonder",kids:[
+    ["scifi","Sci-fi",{g:G.scifi}],["fantasy","Fantasy",{g:G.fantasy}],["animation","Animation",{g:G.animation}],["anime","Anime",{kw:["anime"],fn:t=>t.g.includes(16)&&t.c.includes("JP")}],
+    ["time","Time travel",{kw:["time travel","time loop"]}],["dystopia","Dystopia",{kw:["dystopia","post-apocalyptic"]}],["super","Supernatural",{kw:["supernatural","ghost","monster"]}]]},
+  {id:"real",label:"Real life",kids:[
+    ["documentary","Documentary",{g:G.doc}],["history","History",{g:G.history,kw:["historical"]}],["war","War",{g:G.war}],["bio","Biography",{kw:["biography"]}],
+    ["sports","Sports",{kw:["sports","football","basketball","boxing"]}],["food","Food",{kw:["food","cooking","chef","restaurant"]}],["nature","Nature",{kw:["nature","wildlife","animals"]}],["reality","Reality TV",{g:G.reality}]]},
+  {id:"action",label:"Action",kids:[
+    ["action","Action",{g:G.action}],["adventure","Adventure",{g:G.adventure}],["martial","Martial arts",{kw:["martial arts","kung fu","wuxia"]}],["heist","Heist",{kw:["heist","robbery","con artist"]}],
+    ["spy","Spy",{kw:["spy","espionage","secret agent"]}],["western","Western",{g:G.western}],["survival","Survival",{kw:["survival","disaster"]}]]},
+  {id:"mood",label:"Mood",kids:[
+    ["feelgood","Feel-good",{kw:["feel-good","feel good","heartwarming","uplifting","wholesome"]}],["mind","Mind-bending",{kw:["mind-bending","twist","nonlinear timeline","surreal","alternate reality","time loop","parallel world"]}],
+    ["slow","Slow burn",{kw:["slow burn","meditative","melancholy"]}],["true","Based on a true story",{kw:["based on true story","based on a true story","biography"]}],
+    ["book","Based on a book",{kw:["based on novel or book","based on manga","based on comic","based on webtoon","based on young adult novel"]}],
+    ["short","Short watch",{fn:t=>t.t==="m"?(t.rt>0&&t.rt<=100):(t.s===1&&t.e>0&&t.e<=8)}],
+    ["gem","Hidden gem",{fn:t=>t.r>=7.2&&t.v>=30&&t.v<=1000}],["loved","Critically loved",{fn:t=>t.r>=7.8&&t.v>=300}]]},
+  {id:"era",label:"Era",kids:[
+    ["classic","Before 1980",{fn:t=>t.y&&t.y<1980}],["8090","80s & 90s",{fn:t=>t.y>=1980&&t.y<2000}],["00s","2000s",{fn:t=>t.y>=2000&&t.y<2010}],
+    ["10s","2010s",{fn:t=>t.y>=2010&&t.y<2020}],["20s","2020s",{fn:t=>t.y>=2020}],["new","Last 2 years",{fn:t=>t.y>=new Date().getFullYear()-1}]]},
+  {id:"custom",label:"My tags",kids:[]},
+];
+
+const REASONS = [
+  {id:"genre",label:"Not my genre"},
+  {id:"premise",label:"Premise doesn't grab me"},
+  {id:"dark",label:"Too dark or heavy"},
+  {id:"light",label:"Too light or cheesy"},
+  {id:"long",label:"Too long a commitment"},
+  {id:"quality",label:"Looks low quality"},
+  {id:"place",label:"Not this country or language"},
+  {id:"mood",label:"Not in the mood"},
+];
+const REASON_LABEL = Object.fromEntries(REASONS.map(r=>[r.id,r.label]));
+// Older records logged "already seen" as a pass reason; read them as Watched.
+const fixRec = d => d&&d.s==="pass"&&d.r==="seen" ? {...d,s:"seen",r:null} : d;
+const DARK_G = new Set([27,53,80,10752,10768,9648]), LIGHT_G = new Set([35,10751,10762,16,10749]);
+
+/* ---------- state ---------- */
+const S = {
+  cat:null, byKey:new Map(), kwName:{}, genreName:{},
+  leaves:new Map(),            // leafId -> {label, parent, place, test(t)}
+  decisions:{},                // key -> rec
+  prefs:{types:"both",minRating:6,minVotes:30,explore:0.2,mode:"all",selected:[],custom:[],forgotten:[]},
+  open:null, tab:"pick", current:null, why:null, skipped:new Set(), passOpen:false, passFilter:"all", lastUndo:null,
+};
+const keyOf = t => t.t + t.i;
+const $ = (s,r=document)=>r.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = n => n.toLocaleString("en-US");
+let regionName, langName;
+try{regionName=new Intl.DisplayNames(["en"],{type:"region"});langName=new Intl.DisplayNames(["en"],{type:"language"});}catch{}
+const country = c => {try{return regionName?.of(c)||c}catch{return c}};
+const language = l => {try{return langName?.of(l)||l}catch{return l}};
+const flag = c => /^[A-Z]{2}$/.test(c)?String.fromCodePoint(...[...c].map(ch=>127397+ch.charCodeAt(0))):"";
+
+/* ---------- storage ----------
+   Where history lives, in order of preference:
+   1. Firebase (Google sign-in) when firebase-config.js is filled in and the page runs on the web
+   2. The artifact's own database when the page runs as a Claude artifact
+   3. This browser's localStorage, always kept as a cache */
+const LS = {get(k,d){try{const v=localStorage.getItem("offscript:"+k);return v?JSON.parse(v):d}catch{return d}},set(k,v){try{localStorage.setItem("offscript:"+k,JSON.stringify(v))}catch{}}};
+const BUCKETS = 16;
+const bucketOf = key => {let h=0;for(const ch of key)h=(h*31+ch.charCodeAt(0))>>>0;return "b"+(h%BUCKETS)};
+const FB_VER = "10.12.2", FB = n => `https://www.gstatic.com/firebasejs/${FB_VER}/firebase-${n}.js`;
+
+// Claude artifact database: decisions packed into 16 bucket docs.
+const ArtifactBackend = {
+  buckets:{}, queues:{}, prefQ:null,
+  async start(db){
+    this.db=db;
+    db.collection("log").onSnapshot(snap=>{
+      const remote={};
+      for(const d of snap.docs){ this.buckets[d.id]=true; for(const [k,v] of Object.entries(d.data()?.items||{})) if(v) remote[k]=v }
+      Store.receiveDecisions(remote);
+    },e=>console.warn("log listener",e));
+    db.doc("prefs/main").onSnapshot(s=>Store.receivePrefs(s.exists?s.data():null),e=>console.warn("prefs listener",e));
+  },
+  write(key,rec){
+    const b=bucketOf(key);
+    this.queues[b]=(this.queues[b]||Promise.resolve()).then(async()=>{
+      const ref=this.db.doc("log/"+b);
+      if(!this.buckets[b]){ const s=await ref.get(); this.buckets[b]=true; if(!s.exists) return ref.set({items:{[key]:rec}}) }
+      return ref.update({items:{[key]:rec}});
+    }).catch(Store.saveFailed);
+  },
+  savePrefs(p){ this.prefQ=(this.prefQ||Promise.resolve()).then(()=>this.db.doc("prefs/main").set(p)).catch(e=>console.warn("prefs save",e)) },
+};
+
+// Firebase: users/{uid}/decisions/{key} and users/{uid}/settings/prefs, signed in with Google.
+const FirebaseBackend = {
+  async load(){
+    let cfg=null;
+    try{ cfg=(await import("./firebase-config.js")).default }catch{}
+    if(!cfg?.apiKey||/YOUR_/.test(cfg.apiKey)) return false;
+    const [app,auth,fs]=await Promise.all([import(FB("app")),import(FB("auth")),import(FB("firestore"))]);
+    this.fs=fs; this.authLib=auth;
+    const fa=app.initializeApp(cfg);
+    this.auth=auth.getAuth(fa); this.db=fs.getFirestore(fa);
+    auth.getRedirectResult(this.auth).catch(e=>console.warn("redirect sign-in",e));
+    auth.onAuthStateChanged(this.auth,u=>this.onUser(u));
+    return true;
+  },
+  onUser(u){
+    this.unsubs?.forEach(f=>f()); this.unsubs=[];
+    this.user=u; Store.remote=u?this:null; Store.migrated=false; renderAccount();
+    if(!u){ Store.setLine(); return }
+    const {collection,doc,onSnapshot}=this.fs, base=`users/${u.uid}`;
+    this.unsubs.push(onSnapshot(collection(this.db,base+"/decisions"),snap=>{
+      const remote={}; snap.forEach(d=>remote[d.id]=d.data()); Store.receiveDecisions(remote);
+    },e=>{console.warn("decisions listener",e);toast("Couldn't load your history from your account.")}));
+    this.unsubs.push(onSnapshot(doc(this.db,base+"/settings/prefs"),s=>Store.receivePrefs(s.exists()?s.data():null),e=>console.warn("prefs listener",e)));
+    Store.setLine();
+  },
+  write(key,rec){
+    const {doc,setDoc,deleteDoc}=this.fs, ref=doc(this.db,`users/${this.user.uid}/decisions/${key}`);
+    (rec?setDoc(ref,rec):deleteDoc(ref)).catch(Store.saveFailed);
+  },
+  savePrefs(p){ const {doc,setDoc}=this.fs; setDoc(doc(this.db,`users/${this.user.uid}/settings/prefs`),p).catch(e=>console.warn("prefs save",e)) },
+  async signIn(){
+    const {GoogleAuthProvider,signInWithPopup,signInWithRedirect}=this.authLib, prov=new GoogleAuthProvider();
+    try{ await signInWithPopup(this.auth,prov) }
+    catch(e){ if(e?.code==="auth/popup-blocked"||e?.code==="auth/operation-not-supported-in-this-environment") return signInWithRedirect(this.auth,prov); if(e?.code!=="auth/popup-closed-by-user"&&e?.code!=="auth/cancelled-popup-request") toast("Sign-in didn't work: "+(e?.code||"unknown error")) }
+  },
+  signOut(){ return this.authLib.signOut(this.auth) },
+};
+
+const Store = {
+  remote:null, firebase:false, migrated:false, prefTimer:null,
+  async init(){
+    S.decisions=Object.fromEntries(Object.entries(LS.get("decisions",{})).map(([k,v])=>[k,fixRec(v)])); Object.assign(S.prefs,LS.get("prefs",{}));
+    this.setLine();
+    if(window.claude?.use){
+      let db=null; try{ db=await window.claude.use("db") }catch{}
+      if(db){ this.remote=ArtifactBackend; await ArtifactBackend.start(db); this.setLine() }
+      return;
+    }
+    try{ this.firebase=await FirebaseBackend.load() }catch(e){ console.warn("Firebase unavailable",e) }
+    renderAccount();
+  },
+  get mode(){ return this.remote===FirebaseBackend?"account":this.remote?"db":"local" },
+  setLine(){ $("#storeLine").textContent={account:"History saved to your Google account",db:"History saved with this page",local:"History saved in this browser"}[this.mode] },
+  // Remote snapshot arrives. On the first one, push up anything only this browser knew about.
+  receiveDecisions(remote){
+    const merged={}; for(const [k,v] of Object.entries(remote)) merged[k]=fixRec(v);
+    if(!this.migrated){ this.migrated=true; for(const [k,v] of Object.entries(S.decisions)) if(!merged[k]){ merged[k]=v; this.remote.write(k,v) } }
+    S.decisions=merged; LS.set("decisions",merged); render();
+  },
+  receivePrefs(p){ if(p){ Object.assign(S.prefs,p); LS.set("prefs",S.prefs); buildLeaves(); render() } else this.savePrefs(true) },
+  saveFailed(e){ console.warn("save failed",e); toast(e?.code==="quota_exceeded"?"Storage is full. Export your history from Settings.":"Couldn't save that change. It's kept in this browser for now.") },
+  write(key,rec){
+    S.decisions={...S.decisions}; if(rec) S.decisions[key]=rec; else delete S.decisions[key];
+    LS.set("decisions",S.decisions);
+    this.remote?.write(key,rec);
+  },
+  savePrefs(now){
+    LS.set("prefs",S.prefs);
+    if(!this.remote) return;
+    clearTimeout(this.prefTimer);
+    this.prefTimer=setTimeout(()=>this.remote?.savePrefs(JSON.parse(JSON.stringify(S.prefs))),now?0:700);
+  },
+};
+function renderAccount(){
+  const el=$("#account"); if(!el) return;
+  if(!Store.firebase){ el.hidden=true; return }
+  el.hidden=false;
+  const u=FirebaseBackend.user;
+  el.innerHTML=u?`<span class="who">${esc(u.displayName||u.email||"Signed in")}</span><button class="linkbtn" data-signout="1">Sign out</button>`:`<button class="btn" data-signin="1">Sign in with Google</button>`;
+}
+
+/* ---------- catalog + category tests ---------- */
+function kwIdsFor(terms){
+  const res = terms.map(t=>new RegExp("(^|[^a-z])"+t.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"($|[^a-z])","i"));
+  const ids=new Set();
+  for(const [id,name] of Object.entries(S.kwName)) if(res.some(r=>r.test(name))) ids.add(+id);
+  return ids;
+}
+function makeTest(spec){
+  const parts=[];
+  if(spec.c){const set=new Set(spec.c);parts.push(t=>t.c.some(c=>set.has(c)))}
+  if(spec.g){const set=new Set(spec.g);parts.push(t=>t.g.some(g=>set.has(g)))}
+  if(spec.kw){const set=kwIdsFor(spec.kw);parts.push(t=>t.k.some(k=>set.has(k)))}
+  if(spec.kwIds){const set=new Set(spec.kwIds);parts.push(t=>t.k.some(k=>set.has(k)))}
+  if(spec.fn)parts.push(spec.fn);
+  if(spec.all){const set=new Set(spec.all.g);parts.push(t=>spec.all.g.filter(g=>t.g.includes(g)).length>=2)}
+  return t=>parts.some(p=>p(t));
+}
+const wholeable = p => p.id!=="era" && p.id!=="custom";
+function buildLeaves(){
+  S.leaves.clear();
+  for(const p of PARENTS){
+    const kids = p.id==="custom" ? S.prefs.custom.map(c=>[c.id,c.label,{kwIds:c.kw}]) : p.kids;
+    for(const [id,label,spec] of kids) S.leaves.set(id,{id,label,parent:p.id,place:!!p.place,test:S.cat?makeTest(spec):()=>false});
+    if(wholeable(p)){ const tests=S.cat?kids.map(k=>makeTest(k[2])):[]; S.leaves.set("all-"+p.id,{id:"all-"+p.id,label:(p.place?"All of ":"All ")+p.label,whole:true,parent:p.id,place:!!p.place,test:t=>tests.some(f=>f(t))}) }
+  }
+  S.prefs.selected = S.prefs.selected.filter(id=>S.leaves.has(id));
+}
+
+/* ---------- feature model ---------- */
+const lenBucket = t => t.t==="m" ? (t.rt<90?"Under 90 min":t.rt<=120?"90 to 120 min":t.rt<=150?"2 to 2.5 hours":"Over 2.5 hours") : (t.s<=1?"1 season":t.s<=3?"2 to 3 seasons":"4+ seasons");
+const qBucket = r => r<6?"Rated under 6":r<7?"Rated 6 to 7":r<8?"Rated 7 to 8":"Rated 8+";
+function features(t, reason){
+  const f=[]; const add=(key,w)=>f.push([key,w]);
+  const ks = t.k.slice(0,12);
+  const kwW = w => ks.forEach(k=>add("k:"+k, w/Math.sqrt(ks.length||1)));
+  switch(reason){
+    case "seen": break;
+    case "genre": t.g.forEach(g=>add("g:"+g,1)); break;
+    case "premise": kwW(1.6); t.g.forEach(g=>add("g:"+g,.25)); break;
+    case "dark": t.g.filter(g=>DARK_G.has(g)).forEach(g=>add("g:"+g,.8)); kwW(.5); break;
+    case "light": t.g.filter(g=>LIGHT_G.has(g)).forEach(g=>add("g:"+g,.8)); kwW(.5); break;
+    case "long": add("len:"+lenBucket(t),1); break;
+    case "quality": add("q:"+qBucket(t.r),.6); break;
+    case "place": t.c.forEach(c=>add("c:"+c,1)); add("l:"+t.l,.5); break;
+    case "mood": t.g.forEach(g=>add("g:"+g,.15)); break;
+    default: t.g.forEach(g=>add("g:"+g,.25)); kwW(.3);
+  }
+  return f;
+}
+function tasteWeights(){
+  const w={}; const now=Date.now(); const forgot=new Set(S.prefs.forgotten);
+  for(const d of Object.values(S.decisions)){
+    if(d.s!=="pass") continue;
+    const decay = Math.pow(.5,(now-d.at)/(180*864e5));
+    for(const [k,v] of featuresFor(d)) if(!forgot.has(k)) w[k]=(w[k]||0)+v*decay;
+  }
+  return w;
+}
+function penaltyOf(t,w){
+  let p=0; const hits=[];
+  const chk=(key,scale=1)=>{const v=w[key];if(v){p+=v*scale;hits.push([key,v*scale])}};
+  t.g.forEach(g=>chk("g:"+g));
+  const ks=t.k.slice(0,12); ks.forEach(k=>chk("k:"+k,1/Math.sqrt(ks.length||1)));
+  t.c.forEach(c=>chk("c:"+c)); chk("l:"+t.l); chk("len:"+lenBucket(t)); chk("q:"+qBucket(t.r));
+  return {p,hits};
+}
+function featLabel(key){
+  const [kind,...rest]=key.split(":"); const v=rest.join(":");
+  if(kind==="g")return S.genreName[v]||"Genre "+v;
+  if(kind==="k")return S.kwName[v]||"Theme "+v;
+  if(kind==="c")return country(v);
+  if(kind==="l")return language(v)+" language";
+  return v;
+}
+
+/* ---------- picking ---------- */
+function eligible(){
+  const P=S.prefs; const sel=P.selected.map(id=>S.leaves.get(id)).filter(Boolean);
+  const groups={}; sel.forEach(l=>(groups[l.parent]=groups[l.parent]||[]).push(l));
+  const gl=Object.values(groups);
+  return S.cat.titles.filter(t=>{
+    if(P.types!=="both" && t.t!==P.types) return false;
+    if(t.r<P.minRating || t.v<P.minVotes) return false;
+    const k=keyOf(t); if(S.decisions[k]||S.skipped.has(k)) return false;
+    if(!gl.length) return true;
+    return P.mode==="any" ? sel.some(l=>l.test(t)) : gl.every(g=>g.some(l=>l.test(t)));
+  });
+}
+function hitMe(){
+  if(!S.cat) return;
+  const pool=eligible();
+  if(!pool.length){ S.current=null; S.why={empty:true}; S.passOpen=false; S.open=null; openModal(); return }
+  const w=tasteWeights(); const wild=Math.random()<S.prefs.explore;
+  let pick, info;
+  if(wild||!Object.keys(w).length){ pick=pool[Math.floor(Math.random()*pool.length)]; info=penaltyOf(pick,w) }
+  else{
+    const ws=pool.map(t=>Math.max(.02,Math.exp(-1.1*penaltyOf(t,w).p)));
+    let r=Math.random()*ws.reduce((a,b)=>a+b,0), i=0; while(r>ws[i]&&i<ws.length-1){r-=ws[i];i++}
+    pick=pool[i]; info=penaltyOf(pick,w);
+  }
+  const matched=S.prefs.selected.map(id=>S.leaves.get(id)).filter(l=>l&&l.test(pick)).map(l=>l.label);
+  S.current=pick; S.passOpen=false;
+  S.why={wild:wild&&Object.keys(w).length>0, learned:Object.keys(w).length>0, pool:pool.length, matched, hits:info.hits.filter(h=>h[1]>.15).sort((a,b)=>b[1]-a[1]).slice(0,3)};
+  S.open=null; openModal();
+}
+function openModal(){ S.tab="pick"; S.modal=true; render(); $("#pickCard h2, #pickCard h3")?.focus() }
+function closeModal(){ S.modal=false; S.passOpen=false; render(); $("#hit")?.focus() }
+// Stored decision: {s:status, r:reason, rating, at, i, t, n, y, g, k, c, l, rt, seasons, cats}
+function decide(t,status,reason){
+  const key=keyOf(t), prev=S.decisions[key]||null;
+  Store.write(key,{s:status,r:reason||null,rating:t.r,at:Date.now(),i:t.i,t:t.t,n:t.n,y:t.y,g:t.g,k:t.k.slice(0,12),c:t.c,l:t.l,rt:t.rt,seasons:t.s||0,
+    cats:S.prefs.selected.map(id=>S.leaves.get(id)?.label).filter(Boolean)});
+  S.lastUndo={key,prev};
+  toast({watch:"Enjoy it. Added to Watching.",seen:"Marked as watched.",later:"Saved to your Later list.",pass:"Passed"+(reason?": "+REASON_LABEL[reason].toLowerCase():"")+"."}[status],true);
+}
+// The feature model reads title fields (r = rating, s = seasons); map a stored decision onto them.
+const featuresFor = d => features({...d,r:d.rating,s:d.seasons}, d.r);
+
+/* ---------- UI ---------- */
+let toastTimer;
+function toast(msg,undo){
+  document.querySelector(".toast")?.remove(); clearTimeout(toastTimer);
+  const el=document.createElement("div"); el.className="toast"; el.setAttribute("role","status");
+  el.innerHTML=`<span>${esc(msg)}</span>${undo?'<button type="button">Undo</button>':""}`;
+  if(undo) el.querySelector("button").onclick=()=>{ const u=S.lastUndo; if(!u)return; Store.write(u.key,u.prev); const t=S.byKey.get(u.key); S.lastUndo=null; el.remove(); if(t&&!u.fromList){S.current=t;S.why={undo:true,pool:eligible().length,matched:[],hits:[]};openModal()} else render() };
+  document.body.appendChild(el); toastTimer=setTimeout(()=>el.remove(),5000);
+}
+function counts(){ const c={watch:0,seen:0,later:0,pass:0}; for(const d of Object.values(S.decisions)) c[d.s]=(c[d.s]||0)+1; return c }
+
+function renderTabs(){
+  const c=counts();
+  const tabs=[["pick","Pick"],["later","Later",c.later],["pass","Passed",c.pass],["watch","Watching",c.watch],["seen","Watched",c.seen],["taste","Taste"],["settings","Settings"]];
+  $("#tabs").innerHTML=tabs.map(([id,l,n])=>`<button role="tab" id="tab-${id}" aria-selected="${S.tab===id}" data-tab="${id}">${l}${n!=null?`<span class="n">${n}</span>`:""}</button>`).join("");
+}
+
+function polar(deg,r){ const a=(deg-90)*Math.PI/180; return [Math.cos(a)*r, Math.sin(a)*r] }
+function renderWheel(){
+  const P=S.prefs, sel=new Set(P.selected), n=PARENTS.length;
+  const ring=PARENTS.map((p,i)=>{
+    const ang=i*360/n, [x,y]=polar(ang,28.5);
+    const whole=sel.has("all-"+p.id), cnt=whole?0:[...S.leaves.values()].filter(l=>l.parent===p.id&&sel.has(l.id)).length;
+    return `<button class="node parent ${p.place?"place":""} ${S.open===p.id?"open":""} ${whole?"whole":""}" style="--x:${x}cqw;--y:${y}cqw" data-parent="${p.id}" aria-expanded="${S.open===p.id}" aria-pressed="${whole}">${esc(p.label)}${cnt?`<span class="badge">${cnt}</span>`:""}</button>`;
+  }).join("");
+  let orbit="";
+  if(S.open){
+    const pi=PARENTS.findIndex(p=>p.id===S.open), p=PARENTS[pi];
+    const leaves=[...S.leaves.values()].filter(l=>l.parent===p.id);
+    const wi=leaves.findIndex(l=>l.whole); if(wi>0) leaves.unshift(...leaves.splice(wi,1));
+    const items=leaves.map(l=>({l})); if(p.id==="custom") items.push({add:true});
+    const step=13.2, start=pi*360/n-step*(items.length-1)/2;
+    const avail=availCounts();
+    orbit=items.map((it,i)=>{
+      const [x,y]=polar(start+i*step,42.5);
+      if(it.add) return `<button class="node child add" style="--x:${x}cqw;--y:${y}cqw;--i:${i}" data-add="1">+ Add tag</button>`;
+      const l=it.l, c=avail.get(l.id)??0;
+      return `<button class="node child ${l.place?"place":""} ${l.whole?"all":""}" style="--x:${x}cqw;--y:${y}cqw;--i:${i}" data-leaf="${l.id}" aria-pressed="${sel.has(l.id)}">${esc(l.label)}<span class="ct">${fmt(c)}</span></button>`;
+    }).join("");
+  }
+  const selLabels=P.selected.map(id=>S.leaves.get(id)?.label).filter(Boolean);
+  const sub = selLabels.length ? selLabels.slice(0,3).join(P.mode==="any"?" or ":" + ")+(selLabels.length>3?" …":"") : "anything";
+  return `<div class="wheel" id="wheel">
+    <svg class="guide" viewBox="-50 -50 100 100" aria-hidden="true"><circle r="28.5"/>${S.open?'<circle r="42.5"/>':""}</svg>
+    <button class="hit" id="hit">Hit me<small>${esc(sub)}</small></button>
+    <div class="ring">${ring}</div><div class="orbit">${orbit}</div>
+  </div>`;
+}
+let availCache={sig:"",map:new Map()};
+function availCounts(){
+  const sig=Object.keys(S.decisions).length+"|"+S.prefs.types+S.prefs.minRating+S.prefs.minVotes+"|"+S.open+"|"+S.prefs.custom.length;
+  if(availCache.sig===sig) return availCache.map;
+  const P=S.prefs, base=S.cat.titles.filter(t=>(P.types==="both"||t.t===P.types)&&t.r>=P.minRating&&t.v>=P.minVotes&&!S.decisions[keyOf(t)]);
+  const map=new Map(); for(const l of S.leaves.values()) if(l.parent===S.open) map.set(l.id,base.filter(l.test).length);
+  availCache={sig,map}; return map;
+}
+
+function renderFilters(){
+  const P=S.prefs, groups=new Set(P.selected.map(id=>S.leaves.get(id)?.parent).filter(Boolean));
+  const chips=P.selected.map(id=>S.leaves.get(id)).filter(Boolean).map(l=>`<button class="chip sel ${l.place?"place":""}" data-unsel="${l.id}" aria-label="Remove ${esc(l.label)}">${esc(l.label)}<span class="x">×</span></button>`).join("");
+  return `<div class="filters-panel">
+    <div class="frow"><span class="lbl">In the draw</span><div class="ctl">${chips||'<span class="chip">Everything</span>'}${P.selected.length?'<button class="linkbtn" data-clear="1">Clear</button>':""}</div></div>
+    ${groups.size>1?`<div class="frow"><span class="lbl">Combine</span><div class="ctl"><span class="seg" role="group" aria-label="How groups combine"><button data-mode="all" aria-pressed="${P.mode==="all"}">Match all groups</button><button data-mode="any" aria-pressed="${P.mode==="any"}">Match any</button></span></div></div>`:""}
+    <div class="frow"><span class="lbl">Content length</span><div class="ctl"><span class="seg" role="group" aria-label="Content length"><button data-type="both" aria-pressed="${P.types==="both"}">Both</button><button data-type="m" aria-pressed="${P.types==="m"}">Films</button><button data-type="t" aria-pressed="${P.types==="t"}">Series</button></span></div></div>
+    <div class="frow"><label class="lbl" for="minRating">TMDB score</label><div class="ctl score-ctl"><input type="range" id="minRating" min="0" max="8.5" step="0.5" value="${P.minRating}" aria-describedby="scoreOut"><output id="scoreOut">${scoreText()}</output></div></div>
+  </div>
+  <div class="poolline" id="poolLine">${fmt(eligible().length)} unseen titles match right now</div>`;
+}
+const scoreText = () => S.prefs.minRating>0 ? S.prefs.minRating.toFixed(1)+" & up" : "Any";
+
+function renderCard(){
+  const t=S.current, w=S.why;
+  if(!t){
+    if(w?.empty) return `<div class="card" id="pickCard"><div class="empty"><h3 tabindex="-1">Nothing left in this draw</h3><p>Every title matching these categories has been decided on, or none clear your TMDB score floor. Loosen a category, switch to "Match any", or lower the score.</p><button class="btn" data-closemodal="1" style="margin-top:12px">Back to the picker</button></div></div>`;
+    return `<div class="card" id="pickCard"><div class="empty"><h3>Pick some circles, or don't</h3><p>Tap a group around the button to open its categories. Choose as many as you like, then hit the button. With nothing selected, the whole catalog is in the draw.</p><p style="margin-top:14px">${S.cat?fmt(S.cat.titles.length)+" titles currently streaming on Netflix US.":""}</p></div></div>`;
+  }
+  const isFilm=t.t==="m";
+  const len=isFilm?(t.rt?`${Math.floor(t.rt/60)}h ${t.rt%60}m`:""):`${t.s} season${t.s===1?"":"s"}${t.e?` · ${t.e} eps`:""}`;
+  const years=isFilm?t.y:(t.ly&&t.ly!==t.y?`${t.y}–${t.st==="Returning Series"?"":t.ly}`:t.y);
+  const kws=t.k.slice(0,8).map(k=>S.kwName[k]).filter(Boolean);
+  let why="";
+  if(w){
+    const bits=[];
+    if(w.undo) bits.push("Brought back by undo.");
+    else{
+      bits.push(w.matched.length?`Matches <b>${w.matched.map(esc).join(", ")}</b>.`:"Drawn from the whole catalog.");
+      if(w.wild) bits.push(`<b>Wildcard:</b> chosen purely at random from ${fmt(w.pool)} titles, ignoring your taste profile.`);
+      else if(!w.learned) bits.push(`Chosen at random from ${fmt(w.pool)} titles. Your taste profile starts shaping picks after your first pass.`);
+      else if(w.hits.length) bits.push(`It shares traits you've passed on (${w.hits.map(h=>esc(featLabel(h[0]))).join(", ")}), so it was less likely, but still in the draw of ${fmt(w.pool)}.`);
+      else bits.push(`None of its traits are on your pass list. Drawn from ${fmt(w.pool)} titles.`);
+    }
+    why=`<div class="why">${bits.join(" ")}</div>`;
+  }
+  const reasons = S.passOpen ? `<div class="reasons" id="reasons"><p>Why not? Your answer shapes future picks.</p><div class="grid">${REASONS.map(r=>`<button data-reason="${r.id}">${esc(r.label)}</button>`).join("")}</div></div>` : "";
+  return `<article class="card" id="pickCard" role="dialog" aria-modal="true" aria-label="${esc(t.n)}">
+    <button class="close" data-act="skip" title="Skip without deciding">Skip ✕</button>
+    <div class="reel">
+      <div class="meta"><span class="type">${isFilm?"Film":"Series"}</span><span>${esc(years||"")}</span>${len?`<span>${len}</span>`:""}${t.cr?`<span class="cert">${esc(t.cr)}</span>`:""}<span>${t.c.map(c=>flag(c)+" "+esc(country(c))).join(", ")}</span></div>
+      <h2 tabindex="-1">${esc(t.n)}</h2>
+      ${t.o?`<div class="orig">${esc(t.o)} · ${esc(language(t.l))}</div>`:(t.l!=="en"?`<div class="orig">${esc(language(t.l))}</div>`:"")}
+      ${t.tg?`<p class="tag">${esc(t.tg)}</p>`:""}
+      <div class="scores"><div class="score"><b>${t.v?t.r.toFixed(1):"–"}</b><span>/10 TMDB<br>${fmt(t.v)} votes</span></div><div class="meter" aria-hidden="true"><i style="width:${t.r*10}%"></i></div></div>
+    </div>
+    <div class="body">
+      <p class="ov">${esc(t.ov||"No synopsis available.")}</p>
+      <dl class="facts">
+        ${t.d?`<dt>${isFilm?"Director":"Created by"}</dt><dd>${t.d.map(esc).join(", ")}</dd>`:""}
+        ${t.ca?`<dt>Starring</dt><dd>${t.ca.map(esc).join(", ")}</dd>`:""}
+        ${!isFilm&&t.st?`<dt>Status</dt><dd>${esc(t.st)}</dd>`:""}
+      </dl>
+      <div class="tags">${t.g.map(g=>`<span class="g">${esc(S.genreName[g]||"")}</span>`).join("")}${kws.map(k=>`<span>${esc(k)}</span>`).join("")}</div>
+      ${why}
+      <div class="links"><a href="https://www.netflix.com/search?q=${encodeURIComponent(t.n)}" target="_blank" rel="noopener">Find on Netflix ↗</a>${t.im?`<a href="https://www.imdb.com/title/${t.im}/" target="_blank" rel="noopener">IMDb ↗</a>`:""}<a href="https://www.themoviedb.org/${isFilm?"movie":"tv"}/${t.i}" target="_blank" rel="noopener">TMDB ↗</a></div>
+    </div>
+    <div class="actions">
+      <button class="a-watch" data-act="watch">I'm watching it</button>
+      <button class="a-seen" data-act="seen">Watched it</button>
+      <button class="a-later" data-act="later">Maybe later</button>
+      <button class="a-pass" data-act="pass" aria-expanded="${S.passOpen}" aria-controls="reasons">Not interested</button>
+    </div>
+    ${reasons}
+  </article>`;
+}
+
+function rowMeta(d){ return [d.t==="m"?"Film":"Series", d.y, (d.g||[]).map(g=>S.genreName[g]).filter(Boolean).slice(0,3).join(", "), (d.c||[]).map(country).join(", ")].filter(Boolean).join(" · ") }
+function renderList(status){
+  let items=Object.entries(S.decisions).filter(([,d])=>d.s===status).sort((a,b)=>b[1].at-a[1].at);
+  const head={
+    later:["Later","Your shortlist. These never come up in the draw. Move one back whenever you like."],
+    pass:["Passed","Everything you've turned down and why. Each reason feeds the taste profile. Restore a title to put it back in the draw."],
+    watch:["Watching","Titles you said yes to. Mark one finished to move it to Watched."],
+    seen:["Watched","Titles you've already seen. They stay out of the draw and don't count against similar titles."]}[status];
+  let filters="";
+  if(status==="pass"){
+    const rc={}; items.forEach(([,d])=>rc[d.r||"none"]=(rc[d.r||"none"]||0)+1);
+    filters=`<div class="filters"><button class="chip ${S.passFilter==="all"?"sel":""}" data-pf="all">All ${items.length}</button>${REASONS.filter(r=>rc[r.id]).map(r=>`<button class="chip ${S.passFilter===r.id?"sel":""}" data-pf="${r.id}">${esc(r.label)} ${rc[r.id]}</button>`).join("")}</div>`;
+    if(S.passFilter!=="all") items=items.filter(([,d])=>d.r===S.passFilter);
+  }
+  const rows=items.map(([key,d])=>{
+    const t=S.byKey.get(key); const date=new Date(d.at).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+    const btns = status==="later" ? `<button data-row="watch" data-key="${key}">Watching it</button><button data-row="seen" data-key="${key}">Watched it</button><button data-row="pass" data-key="${key}">Not interested</button><button data-row="restore" data-key="${key}">Back to draw</button>`
+      : status==="watch" ? `<button data-row="seen" data-key="${key}">Finished it</button><button data-row="restore" data-key="${key}">Remove</button>`
+      : `<button data-row="restore" data-key="${key}">${status==="pass"?"Restore":"Remove"}</button>`;
+    return `<div class="row"><div><h4>${esc(d.n)}<small>${date}</small></h4><div class="sub">${status==="pass"&&d.r?`<span class="reason">${esc(REASON_LABEL[d.r]||d.r)}</span>`:""}${esc(rowMeta(d))}${d.cats?.length?` · drawn from ${esc(d.cats.join(", "))}`:""}</div></div>
+      <div class="btns">${btns}</div>
+      ${t&&status==="later"?`<details><summary>Synopsis</summary>${esc(t.ov)}</details>`:""}
+      ${!t?`<div class="sub" style="grid-column:1/-1">No longer in the Netflix US catalog.</div>`:""}</div>`;
+  }).join("");
+  return `<div class="section-head"><div><h2>${head[0]}</h2><p>${head[1]}</p></div></div>${filters}<div class="rows">${rows||`<div class="empty">Nothing here yet.</div>`}</div>`;
+}
+
+function renderTaste(){
+  const w=tasteWeights(); const entries=Object.entries(w).filter(([,v])=>v>.05).sort((a,b)=>b[1]-a[1]);
+  const fam={g:"Genres",k:"Themes",c:"Countries",l:"Languages",len:"Length",q:"Rating range"};
+  const max=entries[0]?.[1]||1;
+  const panels=Object.entries(fam).map(([f,label])=>{
+    const list=entries.filter(([k])=>k.split(":")[0]===f).slice(0,f==="k"?14:8);
+    if(!list.length) return "";
+    return `<div class="panel"><h3>${label}</h3>${list.map(([k,v])=>`<div class="bar"><span class="nm" title="${esc(featLabel(k))}">${esc(featLabel(k))}</span><span class="tr"><i style="width:${Math.min(100,v/max*100)}%"></i></span><button data-forget="${esc(k)}">Forget</button></div>`).join("")}</div>`;
+  }).join("");
+  const passes=Object.values(S.decisions).filter(d=>d.s==="pass");
+  const rc={}; passes.forEach(d=>rc[d.r||"none"]=(rc[d.r||"none"]||0)+1);
+  const rmax=Math.max(1,...Object.values(rc));
+  const reasonPanel=passes.length?`<div class="panel"><h3>Why you pass</h3>${REASONS.filter(r=>rc[r.id]).map(r=>`<div class="bar"><span class="nm">${esc(r.label)}</span><span class="tr"><i style="width:${rc[r.id]/rmax*100}%;background:var(--muted)"></i></span><span class="val" style="font:500 12px var(--mono)">${rc[r.id]}</span></div>`).join("")}</div>`:"";
+  const forgotten=S.prefs.forgotten.length?`<p class="how">Forgotten: ${S.prefs.forgotten.map(k=>`<button class="chip" data-unforget="${esc(k)}">${esc(featLabel(k))} <span class="x">↺</span></button>`).join(" ")}</p>`:"";
+  return `<div class="section-head"><div><h2>Taste profile</h2><p>Traits you keep passing on. Longer bars mean those titles come up less often. Nothing is ever removed outright, and a share of picks are wildcards that ignore this profile entirely.</p></div></div>
+    <p class="how">Each <b>Not interested</b> reason marks different traits. "Not my genre" marks genres, "Premise doesn't grab me" marks the title's themes, "Too long" marks its length. "Watched it" marks nothing. Marks fade by half every six months, so old passes stop counting against new moods.</p>
+    ${forgotten}
+    ${entries.length||passes.length?`<div class="taste">${reasonPanel}${panels}</div>`:`<div class="empty">No passes yet. Your profile builds as you turn titles down.</div>`}`;
+}
+
+function renderSettings(){
+  const P=S.prefs, syn=S.cat?new Date(S.cat.synced).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"}):"";
+  return `<div class="section-head"><div><h2>Settings</h2></div></div><div class="settings">
+    <div class="setting"><label for="explore">Wildcard share <span class="val">${Math.round(P.explore*100)}%</span></label><input type="range" id="explore" min="0" max="0.6" step="0.05" value="${P.explore}"><p class="hint">How often a pick ignores your taste profile and draws from every matching title. Keeps the profile from boxing you in.</p></div>
+    <div class="setting"><label for="minVotes">Minimum votes <span class="val">${P.minVotes}</span></label><input type="range" id="minVotes" min="0" max="500" step="10" value="${P.minVotes}"><p class="hint">Filters out titles with too few ratings to trust the score. Keep it low to surface obscure titles.</p></div>
+    <div class="setting"><label>Catalog</label><p class="hint">${S.cat?`${fmt(S.cat.titles.length)} titles streaming on Netflix ${esc(S.cat.region)}, synced ${syn}. Data from TMDB. Ask Claude to refresh it when it gets stale.`:"Not loaded."}</p></div>
+    <div class="setting"><label>Your history</label><p class="hint">${{account:"Saved to your Google account, so it follows you to any device where you sign in.",db:"Saved with this page, so it follows you to any device where you open it.",local:Store.firebase?"Saved in this browser only. Sign in with Google to keep it in your account.":"Saved in this browser only."}[Store.mode]} Export a copy to back it up or move it somewhere else later.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="exportBtn">Export history</button><label class="btn" for="importFile" style="font-weight:600">Import history</label><input type="file" id="importFile" accept="application/json,.json" hidden></div>
+      <textarea id="exportBox" hidden readonly style="width:100%;height:120px;font:12px var(--mono);border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)"></textarea></div>
+  </div>`;
+}
+
+function render(){
+  if(!S.cat) return;
+  renderTabs();
+  const m=$("#main"); if(S.tab!=="pick") S.modal=false;
+  document.body.classList.toggle("locked",!!S.modal);
+  if(S.tab==="pick") m.innerHTML=`<section class="view pick-layout">${renderWheel()}${renderFilters()}</section>${S.modal?`<div class="modal" id="modal">${renderCard()}</div>`:""}`;
+  else if(S.tab==="taste") m.innerHTML=`<section class="view">${renderTaste()}</section>`;
+  else if(S.tab==="settings") m.innerHTML=`<section class="view">${renderSettings()}</section>`;
+  else m.innerHTML=`<section class="view">${renderList(S.tab)}</section>`;
+}
+
+/* ---------- custom tag sheet ---------- */
+function openTagSheet(){
+  const sheet=document.createElement("div"); sheet.className="sheet"; sheet.setAttribute("role","dialog"); sheet.setAttribute("aria-modal","true");
+  const chosen=new Set();
+  sheet.innerHTML=`<form class="box"><h3>Add a tag</h3><p class="hint" style="margin:0;color:var(--muted);font-size:14px">Search themes from the catalog, like "heist", "samurai" or "small town". Pick one or more, then name the tag.</p>
+    <input id="tagSearch" placeholder="Search themes" autocomplete="off"><div class="sugg" id="sugg"></div>
+    <input id="tagName" placeholder="Tag name" maxlength="24">
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn" data-close>Cancel</button><button class="btn" style="background:var(--ink);color:var(--bg)">Add tag</button></div></form>`;
+  document.body.appendChild(sheet);
+  const freq={}; for(const t of S.cat.titles) for(const k of t.k) freq[k]=(freq[k]||0)+1;
+  const draw=()=>{
+    const q=$("#tagSearch",sheet).value.trim().toLowerCase();
+    const list=Object.entries(S.kwName).filter(([id,n])=>freq[id]>=3&&(!q||n.toLowerCase().includes(q))).sort((a,b)=>freq[b[0]]-freq[a[0]]).slice(0,40);
+    $("#sugg",sheet).innerHTML=list.map(([id,n])=>`<button type="button" data-k="${id}" aria-pressed="${chosen.has(+id)}">${esc(n)} <span style="opacity:.6;font-size:11px">${freq[id]}</span></button>`).join("")||'<span style="color:var(--muted);font-size:13px">No matching themes.</span>';
+  };
+  draw(); $("#tagSearch",sheet).focus();
+  $("#tagSearch",sheet).oninput=draw;
+  sheet.onclick=e=>{
+    if(e.target===sheet||e.target.closest("[data-close]")) return sheet.remove();
+    const b=e.target.closest("[data-k]"); if(!b) return;
+    const id=+b.dataset.k; chosen.has(id)?chosen.delete(id):chosen.add(id);
+    if(!$("#tagName",sheet).value&&chosen.size===1) $("#tagName",sheet).value=S.kwName[id];
+    draw();
+  };
+  $("form",sheet).onsubmit=e=>{
+    e.preventDefault(); const name=$("#tagName",sheet).value.trim();
+    if(!chosen.size||!name){ $("#tagName",sheet).placeholder="Pick a theme and give it a name"; return }
+    const id="c"+Date.now().toString(36);
+    S.prefs.custom=[...S.prefs.custom,{id,label:name,kw:[...chosen]}]; S.prefs.selected=[...S.prefs.selected,id];
+    Store.savePrefs(); buildLeaves(); availCache.sig=""; sheet.remove(); render();
+  };
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("button");
+  if(!b){ if(S.open&&e.target.closest("#wheel")){ S.open=null; render() } return }
+  const d=b.dataset, P=S.prefs;
+  if(d.tab){ S.tab=d.tab; render(); return }
+  if(d.signin){ FirebaseBackend.signIn(); return }
+  if(d.signout){ await FirebaseBackend.signOut(); toast("Signed out. History on this device stays in this browser."); return }
+  if(b.id==="hit"){ hitMe(); return }
+  if(d.parent){
+    const p=PARENTS.find(x=>x.id===d.parent), all="all-"+p.id, inGroup=id=>S.leaves.get(id)?.parent===p.id;
+    if(S.open===p.id){ if(P.selected.includes(all)) P.selected=P.selected.filter(x=>x!==all); S.open=null }
+    else{ S.open=p.id; if(wholeable(p)&&!P.selected.some(inGroup)) P.selected=[...P.selected,all] }
+    Store.savePrefs(); render(); return }
+  if(d.add){ openTagSheet(); return }
+  if(d.leaf){
+    const leaf=S.leaves.get(d.leaf), on=P.selected.includes(d.leaf);
+    let next=P.selected.filter(x=>x!==d.leaf);
+    if(!on){ next=next.filter(x=>{const l=S.leaves.get(x); return !(l&&l.parent===leaf.parent&&(leaf.whole||l.whole))}); next.push(d.leaf) }
+    P.selected=next; S.open=null; Store.savePrefs(); render(); return }
+  if(d.closemodal){ closeModal(); return }
+  if(d.unsel){ P.selected=P.selected.filter(x=>x!==d.unsel); Store.savePrefs(); render(); return }
+  if(d.clear){ P.selected=[]; Store.savePrefs(); render(); return }
+  if(d.mode){ P.mode=d.mode; Store.savePrefs(); render(); return }
+  if(d.type){ P.types=d.type; Store.savePrefs(); render(); return }
+  if(d.act && S.current){
+    const t=S.current;
+    if(d.act==="pass"){ S.passOpen=!S.passOpen; render(); if(S.passOpen) $("#reasons button")?.focus(); return }
+    if(d.act==="skip"){ S.skipped.add(keyOf(t)); closeModal(); return }
+    decide(t,d.act); closeModal(); return;
+  }
+  if(d.reason && S.current){ decide(S.current,"pass",d.reason); closeModal(); return }
+  if(d.row){
+    const key=d.key, t=S.byKey.get(key), cur=S.decisions[key];
+    if(d.row==="restore"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,null); toast(`${cur.n} is back in the draw.`,true); render(); return }
+    if(d.row==="watch"&&t){ decide(t,"watch"); render(); return }
+    if(d.row==="seen"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,{...cur,s:"seen",r:null,at:Date.now()}); toast(`${cur.n} moved to Watched.`,true); render(); return }
+    if(d.row==="pass"&&t){ S.current=t; S.why={undo:false,matched:[],hits:[],pool:eligible().length}; S.passOpen=true; Store.write(key,null); openModal(); return }
+  }
+  if(d.pf){ S.passFilter=d.pf; render(); return }
+  if(d.forget){ P.forgotten=[...new Set([...P.forgotten,d.forget])]; Store.savePrefs(); render(); return }
+  if(d.unforget){ P.forgotten=P.forgotten.filter(k=>k!==d.unforget); Store.savePrefs(); render(); return }
+  if(b.id==="exportBtn"){
+    const data=JSON.stringify({app:"off-script",exported:new Date().toISOString(),prefs:S.prefs,decisions:S.decisions},null,1);
+    let dl=null; try{ dl=window.claude?.use?await window.claude.use("downloads"):null }catch{}
+    if(dl){ try{ await dl.save({filename:"off-script-history.json",data}); return }catch(err){ if(err?.code==="cancelled"||err?.code==="declined") return } }
+    const box=$("#exportBox"); box.hidden=false; box.value=data; box.select(); try{await navigator.clipboard.writeText(data); toast("History copied to clipboard.")}catch{toast("Copy the text below to save your history.")}
+  }
+});
+document.addEventListener("input",e=>{
+  const el=e.target, P=S.prefs;
+  if(["explore","minRating","minVotes"].includes(el.id)){ P[el.id]=+el.value; Store.savePrefs(); const v=el.parentElement.querySelector(".val"); if(v) v.textContent=el.id==="explore"?Math.round(P.explore*100)+"%":P.minVotes }
+  if(el.id==="minRating"){ $("#scoreOut").textContent=scoreText(); $("#poolLine").textContent=fmt(eligible().length)+" unseen titles match right now"; }
+});
+document.addEventListener("change",async e=>{
+  if(e.target.id!=="importFile") return;
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    const j=JSON.parse(await f.text()); if(!j.decisions) throw 0;
+    let n=0; for(const [k,v] of Object.entries(j.decisions)) if(!S.decisions[k]){ Store.write(k,v); n++ }
+    if(j.prefs){ Object.assign(S.prefs,j.prefs); Store.savePrefs(true); buildLeaves() }
+    toast(`Imported ${n} decisions.`); render();
+  }catch{ toast("That file isn't an Off Script export.") }
+});
+document.addEventListener("keydown",e=>{
+  if(e.target.matches("input,textarea")) return;
+  if(e.key==="Escape"){ if(document.querySelector(".sheet")) document.querySelector(".sheet").remove(); else if(S.modal&&S.current){ S.skipped.add(keyOf(S.current)); closeModal() } else if(S.modal) closeModal(); else if(S.open){ S.open=null; render() } }
+  if(S.tab!=="pick"||S.modal||document.querySelector(".sheet")) return;
+  if(e.key===" "&&!e.target.closest("button")){ e.preventDefault(); hitMe() }
+});
+
+/* ---------- boot ---------- */
+(async function boot(){
+  try{
+    const res=await fetch("catalog.json"); if(!res.ok) throw new Error(res.status);
+    S.cat=await res.json();
+  }catch(err){
+    $("#catalogLine").textContent="catalog missing";
+    $("#main").innerHTML=`<div class="empty"><h3>No catalog loaded</h3><p>The title list that ships with this page didn't load. Ask Claude to run the catalog sync and republish.</p></div>`;
+    return;
+  }
+  S.kwName=S.cat.keywords; S.genreName=S.cat.genres;
+  S.cat.titles.forEach(t=>{ t.k=t.k||[]; t.g=t.g||[]; t.c=t.c||[]; S.byKey.set(keyOf(t),t) });
+  const syn=new Date(S.cat.synced).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  $("#catalogLine").textContent=`${fmt(S.cat.titles.length)} titles · Netflix ${S.cat.region} · synced ${syn}`;
+  buildLeaves(); render();
+  await Store.init(); buildLeaves(); render();
+})();
+</script>
