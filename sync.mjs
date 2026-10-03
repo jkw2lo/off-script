@@ -51,7 +51,7 @@ async function discoverAll(kind) {
   return [...ids];
 }
 
-const genres = {}, keywords = {};
+const genres = {}, keywords = {}, companies = {};
 const yearOf = d => (d ? +d.slice(0, 4) : null);
 
 function compact(kind, d) {
@@ -99,6 +99,10 @@ function compact(kind, d) {
   if (cert) rec.cr = cert;
   if (d.external_ids?.imdb_id) rec.im = d.external_ids.imdb_id;
   if (d.poster_path) rec.p = d.poster_path;
+  // Production companies (for anime, the animation studio): used by the "art style" reason.
+  const pcs = (d.production_companies || []).slice(0, 3);
+  pcs.forEach(c => (companies[c.id] = c.name));
+  if (pcs.length) rec.pc = pcs.map(c => c.id);
   return rec;
 }
 
@@ -115,7 +119,7 @@ for (const kind of ["movie", "tv"]) {
 const used = new Set(titles.flatMap(t => t.k));
 const kw = {}; for (const id of used) kw[id] = keywords[id];
 
-const out = { region: REGION, provider: "Netflix", synced: new Date().toISOString(), genres, keywords: kw, titles };
+const out = { region: REGION, provider: "Netflix", synced: new Date().toISOString(), genres, keywords: kw, companies, titles };
 writeFileSync("catalog.json", JSON.stringify(out));
 const mb = (Buffer.byteLength(JSON.stringify(out)) / 1e6).toFixed(1);
 console.log(`Done: ${titles.length} titles (${titles.filter(t => t.t === "m").length} films, ${titles.filter(t => t.t === "t").length} series), ${mb} MB, ${((Date.now() - t0) / 1000).toFixed(0)}s`);

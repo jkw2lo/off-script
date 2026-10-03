@@ -376,7 +376,7 @@ const PARENTS = [
 const REASON_GROUPS = [
   {label:"Story & genre", items:[{id:"genre",label:"Not my genre"},{id:"premise",label:"Premise doesn't grab me"}]},
   {label:"Tone", items:[{id:"dark",label:"Too dark or heavy"},{id:"light",label:"Too light or cheesy"}]},
-  {label:"Look & feel", items:[{id:"style",label:"Don't like the art style or aesthetic"},{id:"quality",label:"Looks low quality"}]},
+  {label:"Look & feel", items:[{id:"style",label:"Can't sit through the art style"},{id:"quality",label:"Looks low quality"}]},
   {label:"Been there", items:[{id:"tried",label:"Tried it and didn't like it"}]},
   {label:"Origin", items:[{id:"place",label:"Not this country or language"}]},
   {label:"Right now", items:[{id:"long",label:"Too long a commitment"},{id:"mood",label:"Not in the mood"}]},
@@ -389,7 +389,7 @@ const DARK_G = new Set([27,53,80,10752,10768,9648]), LIGHT_G = new Set([35,10751
 
 /* ---------- state ---------- */
 const S = {
-  cat:null, byKey:new Map(), kwName:{}, genreName:{},
+  cat:null, byKey:new Map(), kwName:{}, genreName:{}, companyName:{}, companyCount:{},
   leaves:new Map(),            // leafId -> {label, parent, place, test(t)}
   decisions:{},                // key -> rec
   prefs:{types:"both",minRating:6,minVotes:30,explore:0.2,mode:"all",selected:[],custom:[],forgotten:[]},
@@ -551,6 +551,8 @@ function buildLeaves(){
 const lenBucket = t => t.t==="m" ? (t.rt<90?"Under 90 min":t.rt<=120?"90 to 120 min":t.rt<=150?"2 to 2.5 hours":"Over 2.5 hours") : (t.s<=1?"1 season":t.s<=3?"2 to 3 seasons":"4+ seasons");
 const qBucket = r => r<6?"Rated under 6":r<7?"Rated 6 to 7":r<8?"Rated 7 to 8":"Rated 8+";
 const eraOf = t => t.y ? Math.floor(t.y/10)*10+"s" : "";
+// Companies behind hundreds of titles (Netflix, big distributors) say nothing about a look; skip them.
+const studios = t => (t.pc||[]).filter(c=>(S.companyCount[c]||0)<=60);
 function features(t, reason){
   const f=[]; const add=(key,w)=>f.push([key,w]);
   const ks = t.k.slice(0,12);
@@ -565,7 +567,8 @@ function features(t, reason){
     case "quality": add("q:"+qBucket(t.r),.6); break;
     case "place": t.c.forEach(c=>add("c:"+c,1)); add("l:"+t.l,.5); break;
     case "mood": t.g.forEach(g=>add("g:"+g,.15)); break;
-    case "style": t.g.filter(g=>g===16).forEach(g=>add("g:"+g,1)); if(eraOf(t)) add("era:"+eraOf(t),.6); t.c.forEach(c=>add("c:"+c,.4)); kwW(.3); break;
+    // Art style comes from who made it, not the genre: mark the studio and creator only.
+    case "style": studios(t).forEach(c=>add("pc:"+c,1)); (t.d||[]).forEach(n=>add("p:"+n,.7)); break;
     case "tried": t.g.forEach(g=>add("g:"+g,.5)); kwW(1.2); break;
     default: t.g.forEach(g=>add("g:"+g,.25)); kwW(.3);
   }
@@ -586,6 +589,7 @@ function penaltyOf(t,w){
   t.g.forEach(g=>chk("g:"+g));
   const ks=t.k.slice(0,12); ks.forEach(k=>chk("k:"+k,1/Math.sqrt(ks.length||1)));
   t.c.forEach(c=>chk("c:"+c)); chk("l:"+t.l); chk("len:"+lenBucket(t)); chk("q:"+qBucket(t.r)); if(eraOf(t)) chk("era:"+eraOf(t));
+  studios(t).forEach(c=>chk("pc:"+c)); (t.d||[]).forEach(n=>chk("p:"+n));
   return {p,hits};
 }
 function featLabel(key){
@@ -595,6 +599,8 @@ function featLabel(key){
   if(kind==="c")return country(v);
   if(kind==="l")return language(v)+" language";
   if(kind==="era")return "Made in the "+v;
+  if(kind==="pc")return S.companyName[v]||"Studio "+v;
+  if(kind==="p")return v;
   return v;
 }
 
@@ -633,7 +639,7 @@ function closeModal(){ S.modal=false; S.passOpen=false; render(); $("#hit")?.foc
 // Stored decision: {s:status, r:reason, rating, at, i, t, n, y, g, k, c, l, rt, seasons, cats}
 function decide(t,status,reason){
   const key=keyOf(t), prev=S.decisions[key]||null;
-  Store.write(key,{s:status,r:reason||null,rating:t.r,at:Date.now(),i:t.i,t:t.t,n:t.n,y:t.y,g:t.g,k:t.k.slice(0,12),c:t.c,l:t.l,rt:t.rt,seasons:t.s||0,
+  Store.write(key,{s:status,r:reason||null,rating:t.r,at:Date.now(),i:t.i,t:t.t,n:t.n,y:t.y,g:t.g,k:t.k.slice(0,12),c:t.c,l:t.l,rt:t.rt,seasons:t.s||0,pc:t.pc||[],d:t.d||[],
     cats:S.prefs.selected.map(id=>S.leaves.get(id)?.label).filter(Boolean)});
   S.lastUndo={key,prev};
   toast({watch:"Enjoy it. Added to Watching.",seen:"Marked as watched.",later:"Saved to your Later list.",pass:"Passed"+(reason?": "+REASON_LABEL[reason].toLowerCase():"")+"."}[status],true);
@@ -802,7 +808,7 @@ function renderList(status){
 
 function renderTaste(){
   const w=tasteWeights(); const entries=Object.entries(w).filter(([,v])=>v>.05).sort((a,b)=>b[1]-a[1]);
-  const fam={g:"Genres",k:"Themes",c:"Countries",l:"Languages",era:"Era",len:"Length",q:"Rating range"};
+  const fam={g:"Genres",k:"Themes",pc:"Studios",p:"Creators",c:"Countries",l:"Languages",era:"Era",len:"Length",q:"Rating range"};
   const max=entries[0]?.[1]||1;
   const panels=Object.entries(fam).map(([f,label])=>{
     const list=entries.filter(([k])=>k.split(":")[0]===f).slice(0,f==="k"?14:8);
@@ -815,7 +821,7 @@ function renderTaste(){
   const reasonPanel=passes.length?`<div class="panel"><h3>Why you pass</h3>${REASONS.filter(r=>rc[r.id]).map(r=>`<div class="bar"><span class="nm">${esc(r.label)}</span><span class="tr"><i style="width:${rc[r.id]/rmax*100}%;background:var(--muted)"></i></span><span class="val" style="font:500 12px var(--mono)">${rc[r.id]}</span></div>`).join("")}</div>`:"";
   const forgotten=S.prefs.forgotten.length?`<p class="how">Forgotten: ${S.prefs.forgotten.map(k=>`<button class="chip" data-unforget="${esc(k)}">${esc(featLabel(k))} <span class="x">↺</span></button>`).join(" ")}</p>`:"";
   return `<div class="section-head"><div><h2>Taste profile</h2><p>Traits you keep passing on. Longer bars mean those titles come up less often. Nothing is ever removed outright, and a share of picks are wildcards that ignore this profile entirely.</p></div></div>
-    <p class="how">Each <b>Not interested</b> reason marks different traits. "Not my genre" marks genres, "Premise doesn't grab me" marks the title's themes, "Too long" marks its length. "Watched it" marks nothing. Marks fade by half every six months, so old passes stop counting against new moods.</p>
+    <p class="how">Each <b>Not interested</b> reason marks different traits. "Not my genre" marks genres, "Premise doesn't grab me" marks the title's themes, "Too long" marks its length, "Can't sit through the art style" marks only the studio and creator. "Watched it" marks nothing. Marks fade by half every six months, so old passes stop counting against new moods.</p>
     ${forgotten}
     ${entries.length||passes.length?`<div class="taste">${reasonPanel}${panels}</div>`:`<div class="empty">No passes yet. Your profile builds as you turn titles down.</div>`}`;
 }
@@ -958,7 +964,8 @@ document.addEventListener("keydown",e=>{
     $("#main").innerHTML=`<div class="empty"><h3>No catalog loaded</h3><p>The title list that ships with this page didn't load. Ask Claude to run the catalog sync and republish.</p></div>`;
     return;
   }
-  S.kwName=S.cat.keywords; S.genreName=S.cat.genres;
+  S.kwName=S.cat.keywords; S.genreName=S.cat.genres; S.companyName=S.cat.companies||{}; S.companyCount={};
+  for(const t of S.cat.titles) for(const c of t.pc||[]) S.companyCount[c]=(S.companyCount[c]||0)+1;
   S.cat.titles.forEach(t=>{ t.k=t.k||[]; t.g=t.g||[]; t.c=t.c||[]; S.byKey.set(keyOf(t),t) });
   const syn=new Date(S.cat.synced).toLocaleDateString("en-US",{month:"short",day:"numeric"});
   $("#catalogLine").textContent=`${fmt(S.cat.titles.length)} titles · Netflix ${S.cat.region} · synced ${syn}`;
