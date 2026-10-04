@@ -246,6 +246,13 @@ body.locked{overflow:hidden}
 .actions .a-watch,.actions .a-started,.actions .a-seen{grid-column:span 2}
 .actions .a-later,.actions .a-pass{grid-column:span 3}
 @media (max-width:560px){.actions{grid-template-columns:1fr 1fr}.actions .a-watch{grid-column:1/-1}.actions .a-started,.actions .a-seen,.actions .a-later,.actions .a-pass{grid-column:span 1}}
+.rate{display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}
+.rate-lbl{font:500 11.5px var(--mono);color:var(--muted);margin-right:2px}
+.row .btns .rate button{padding:4px 10px}
+@media (max-width:640px){.row .btns .rate{width:100%;flex-wrap:nowrap}.row .btns .rate button{flex:1;padding-inline:6px}.rate-lbl{flex:none}}
+.row .btns .rate button.fb-up[aria-pressed="true"]{background:var(--good);border-color:var(--good);color:var(--surface)}
+.row .btns .rate button.fb-mid[aria-pressed="true"]{background:var(--muted);border-color:var(--muted);color:var(--surface)}
+.row .btns .rate button.fb-down[aria-pressed="true"]{background:var(--warn);border-color:var(--warn);color:var(--surface)}
 .row .state{display:inline-block;font:500 11.5px var(--mono);padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--good) 15%,transparent);color:var(--good);margin-right:6px}
 .a-later{background:var(--surface-2);color:var(--later)}
 .a-pass{background:var(--surface-2);color:var(--warn)}
@@ -627,9 +634,12 @@ function features(t, reason){
 function tasteWeights(){
   const w={}; const now=Date.now(); const forgot=new Set(S.prefs.forgotten);
   for(const d of Object.values(S.decisions)){
-    if(d.s!=="pass") continue;
+    const disliked = d.s==="seen" && d.fb==="down";
+    if(d.s!=="pass" && !disliked) continue;
     const decay = Math.pow(.5,(now-d.at)/(180*864e5));
-    for(const [k,v] of featuresFor(d)) if(!forgot.has(k)) w[k]=(w[k]||0)+v*decay;
+    // A watched title rated "Not for me" counts like a softer "tried it and didn't like it".
+    const feats = disliked ? features({...d,r:d.rating,s:d.seasons},"tried").map(([k,v])=>[k,v*.6]) : featuresFor(d);
+    for(const [k,v] of feats) if(!forgot.has(k)) w[k]=(w[k]||0)+v*decay;
   }
   return w;
 }
@@ -848,14 +858,18 @@ function renderReasons(){
     ${REASON_GROUPS.map(g=>`<section><h4>${esc(g.label)}</h4>${g.items.map(r=>`<button data-reason="${r.id}">${esc(r.label)}</button>`).join("")}</section>`).join("")}
   </aside>`;
 }
+const FEEDBACK=[["up","Loved it"],["mid","It was fine"],["down","Not for me"]];
+function rateButtons(key,d,act){
+  return `<span class="rate" role="group" aria-label="${act==="fin"?"Finished it. How was it?":"Your rating"}">${act==="fin"?'<span class="rate-lbl">Finished it:</span>':""}${FEEDBACK.map(([v,l])=>`<button data-row="${act}" data-fb="${v}" data-key="${key}" class="fb-${v}" aria-pressed="${d.fb===v}">${l}</button>`).join("")}</span>`;
+}
 function rowMeta(d){ return [d.t==="m"?"Film":"Series", d.y, (d.g||[]).map(g=>S.genreName[g]).filter(Boolean).slice(0,3).join(", "), (d.c||[]).map(country).join(", ")].filter(Boolean).join(" · ") }
 function renderList(status){
   let items=Object.entries(S.decisions).filter(([,d])=>d.s===status).sort((a,b)=>b[1].at-a[1].at);
   const head={
     later:["Later","Your shortlist. These never come up in the draw. Move one back whenever you like."],
     pass:["Passed","Everything you've turned down and why. Each reason feeds the taste profile. Restore a title to put it back in the draw."],
-    watch:["In progress","Titles you're watching now or started and put on hold. Mark one finished to move it to Watched, or dropped if it lost you."],
-    seen:["Watched","Titles you've already seen. They stay out of the draw and don't count against similar titles."]}[status];
+    watch:["In progress","Titles you're watching now or started and put on hold. When you finish one, rate it to move it to Watched, or mark it dropped if it lost you."],
+    seen:["Watched","Titles you've already seen. They stay out of the draw. Rate any of them; only \"Not for me\" counts against similar titles."]}[status];
   let filters="";
   if(status==="pass"){
     const rc={}; items.forEach(([,d])=>rc[d.r||"none"]=(rc[d.r||"none"]||0)+1);
@@ -865,7 +879,8 @@ function renderList(status){
   const rows=items.map(([key,d])=>{
     const t=S.byKey.get(key); const date=new Date(d.at).toLocaleDateString("en-US",{month:"short",day:"numeric"});
     const btns = status==="later" ? `<button data-row="watch" data-key="${key}">Watching it now</button><button data-row="seen" data-key="${key}">Watched it</button><button data-row="pass" data-key="${key}">Not interested</button><button data-row="restore" data-key="${key}">Back to draw</button>`
-      : status==="watch" ? `<button data-row="seen" data-key="${key}">Finished it</button><button data-row="dropped" data-key="${key}" title="Logs it as tried and didn't like it">Dropped it</button><button data-row="restore" data-key="${key}">Remove</button>`
+      : status==="watch" ? `${rateButtons(key,d,"fin")}<button data-row="dropped" data-key="${key}" title="Logs it as tried and didn't like it">Dropped it</button><button data-row="restore" data-key="${key}">Remove</button>`
+      : status==="seen" ? `${rateButtons(key,d,"rate")}<button data-row="restore" data-key="${key}">Remove</button>`
       : `<button data-row="restore" data-key="${key}">${status==="pass"?"Restore":"Remove"}</button>`;
     return `<div class="row"><div><h4>${esc(d.n)}<small>${date}</small></h4><div class="sub">${status==="watch"?`<span class="state">${d.how==="started"?"Started":"Watching now"}</span>`:""}${status==="pass"&&d.r?`<span class="reason">${esc(REASON_LABEL[d.r]||d.r)}</span>`:""}${esc(rowMeta(d))}${d.cats?.length?` · drawn from ${esc(d.cats.join(", "))}`:""}</div></div>
       <div class="btns">${btns}</div>
@@ -890,7 +905,7 @@ function renderTaste(){
   const reasonPanel=passes.length?`<div class="panel"><h3>Why you pass</h3>${REASONS.filter(r=>rc[r.id]).map(r=>`<div class="bar"><span class="nm">${esc(r.label)}</span><span class="tr"><i style="width:${rc[r.id]/rmax*100}%;background:var(--muted)"></i></span><span class="val" style="font:500 12px var(--mono)">${rc[r.id]}</span></div>`).join("")}</div>`:"";
   const forgotten=S.prefs.forgotten.length?`<p class="how">Forgotten: ${S.prefs.forgotten.map(k=>`<button class="chip" data-unforget="${esc(k)}">${esc(featLabel(k))} <span class="x">↺</span></button>`).join(" ")}</p>`:"";
   return `<div class="section-head"><div><h2>Taste profile</h2><p>Traits you keep passing on. Longer bars mean those titles come up less often. Nothing is ever removed outright, and a share of picks are wildcards that ignore this profile entirely.</p></div></div>
-    <p class="how">Each <b>Not interested</b> reason marks different traits. "Not my genre" marks genres, "Premise doesn't grab me" marks the title's themes, "Too long" marks its length, "Can't sit through the art style" marks only the studio and creator. "Watched it" marks nothing. Marks fade by half every six months, so old passes stop counting against new moods.</p>
+    <p class="how">Each <b>Not interested</b> reason marks different traits. "Not my genre" marks genres, "Premise doesn't grab me" marks the title's themes, "Too long" marks its length, "Can't sit through the art style" marks only the studio and creator. "Watched it" marks nothing, unless you later rate it "Not for me". Marks fade by half every six months, so old passes stop counting against new moods.</p>
     ${forgotten}
     ${entries.length||passes.length?`<div class="taste">${reasonPanel}${panels}</div>`:`<div class="empty">No passes yet. Your profile builds as you turn titles down.</div>`}`;
 }
@@ -1039,6 +1054,8 @@ document.addEventListener("click",async e=>{
     if(d.row==="restore"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,null); toast(`${cur.n} is back in the draw.`,true); render(); return }
     if(d.row==="watch"&&t){ decide(t,"watch",null,"now"); render(); return }
     if(d.row==="dropped"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,{...cur,s:"pass",r:"tried",how:null,at:Date.now()}); toast(`${cur.n} moved to Passed: tried it and didn't like it.`,true); render(); return }
+    if(d.row==="fin"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,{...cur,s:"seen",r:null,how:null,fb:d.fb,at:Date.now()}); toast(`${cur.n} moved to Watched: ${FEEDBACK.find(f=>f[0]===d.fb)[1].toLowerCase()}.`,true); render(); return }
+    if(d.row==="rate"){ Store.write(key,{...cur,fb:cur.fb===d.fb?null:d.fb}); render(); return }
     if(d.row==="seen"){ S.lastUndo={key,prev:cur,fromList:true}; Store.write(key,{...cur,s:"seen",r:null,at:Date.now()}); toast(`${cur.n} moved to Watched.`,true); render(); return }
     if(d.row==="pass"&&t){ S.current=t; S.why={undo:false,matched:[],hits:[],pool:eligible().length}; S.passOpen=true; Store.write(key,null); const back=S.tab; openModal(); S.returnTab=back; return }
   }
