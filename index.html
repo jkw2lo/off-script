@@ -344,6 +344,14 @@ body.locked{overflow:hidden}
 .qs-legend i{width:12px;height:12px;border-radius:4px;display:inline-block}
 .qs-legend i.seen{background:var(--place)}
 .qs-legend i.disliked{background:var(--warn)}
+.qs-legend i.other{background:var(--surface-2);border:1.5px dashed var(--muted)}
+.qs-search{margin-bottom:12px}
+.qs-search input{width:100%;max-width:520px;padding:11px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:15px}
+.qs-search input:focus{border-color:var(--accent);outline:none}
+.qs-found{margin:0 0 10px;font:500 12px var(--mono);color:var(--muted)}
+.qs-orig{font-size:12px;color:var(--muted);line-height:1.2}
+.qs-tile[data-state="other"]{border-style:dashed}
+.qs-tile[data-state="other"] .qs-state{color:var(--muted)}
 .qs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 @media (max-width:640px){.qs-tile{min-height:70px;padding:9px 10px}.qs-name{font-size:13.5px}}
 .qs-tile{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;min-height:78px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);transition:background .12s,border-color .12s}
@@ -448,7 +456,7 @@ const S = {
   leaves:new Map(),            // leafId -> {label, parent, place, test(t)}
   decisions:{},                // key -> rec
   prefs:{types:"both",minRating:6,minVotes:30,explore:0.2,mode:"all",selected:[],custom:[],forgotten:[]},
-  sortFilter:"all", sortLimit:40,
+  sortFilter:"all", sortLimit:40, sortQuery:"",
   open:null, tab:"pick", current:null, why:null, skipped:new Set(), passOpen:false, passFilter:"all", lastUndo:null,
 };
 const keyOf = t => t.t + t.i;
@@ -915,34 +923,46 @@ function renderTaste(){
    Tap once: watched. Tap again: watched, didn't like it (a "tried it" pass). Tap again: clear. */
 const SORT_FILTERS=[["all","All"],["m","Films"],["t","Series"],["asia","Asia"],["europe","Europe"],["americas","Americas"],["afar","Further afield"]];
 function sortState(d){ return !d?"none":d.s==="seen"?"seen":d.s==="pass"&&d.r==="tried"?"disliked":"other" }
+const OTHER_LABEL={later:"In Later",watch:"In progress",pass:"Passed",seen:"Watched"};
+// Lowercase, strip accents and punctuation so "amelie" finds "Amélie" and "spiderman" finds "Spider-Man".
+const norm=x=>String(x||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
+const squash=x=>norm(x).replace(/ /g,"");
 function sortPool(){
-  const f=S.sortFilter, region=PARENTS.find(p=>p.id===f);
+  const f=S.sortFilter, region=PARENTS.find(p=>p.id===f), q=norm(S.sortQuery);
   const codes=region?new Set(region.kids.flatMap(k=>k[2].c)):null;
-  return S.cat.titles.filter(t=>(f==="m"||f==="t")?t.t===f:codes?t.c.some(c=>codes.has(c)):true)
-    .filter(t=>sortState(S.decisions[keyOf(t)])!=="other")
-    .sort((a,b)=>b.v-a.v);
+  const base=S.cat.titles.filter(t=>(f==="m"||f==="t")?t.t===f:codes?t.c.some(c=>codes.has(c)):true);
+  if(!q) return base.filter(t=>sortState(S.decisions[keyOf(t)])!=="other").sort((a,b)=>b.v-a.v);
+  // Searching covers every title, including ones already in Later, In progress or Passed.
+  const qs=q.replace(/ /g,""), rank=t=>{ const n=norm(t.n), o=norm(t.o);
+    return n===q||o===q?0 : n.startsWith(q)||o.startsWith(q)?1 : n.includes(q)||o.includes(q)?2 : squash(t.n).includes(qs)||squash(t.o).includes(qs)?3 : 9 };
+  return base.map(t=>[t,rank(t)]).filter(x=>x[1]<9).sort((a,b)=>a[1]-b[1]||b[0].v-a[0].v).map(x=>x[0]);
 }
 function sortTile(t){
-  const st=sortState(S.decisions[keyOf(t)]);
-  const label={none:"",seen:"Watched",disliked:"Didn't like"}[st];
+  const d=S.decisions[keyOf(t)], st=sortState(d);
+  const label=st==="other"?OTHER_LABEL[d.s]||"":{none:"",seen:"Watched",disliked:"Didn't like"}[st];
   return `<button class="qs-tile" data-qs="${keyOf(t)}" data-state="${st}" aria-label="${esc(t.n)}${label?", "+label:""}">
-    <span class="qs-name">${esc(t.n)}</span><span class="qs-meta">${t.y||""} · ${t.t==="m"?"Film":"Series"}${t.c[0]?" · "+flag(t.c[0]):""}</span>
+    <span class="qs-name">${esc(t.n)}</span>${t.o&&norm(S.sortQuery)?`<span class="qs-orig">${esc(t.o)}</span>`:""}<span class="qs-meta">${t.y||""} · ${t.t==="m"?"Film":"Series"}${t.c[0]?" · "+flag(t.c[0]):""}</span>
     <span class="qs-state">${label}</span></button>`;
 }
 function sortCounts(){ let seen=0,dis=0; for(const d of Object.values(S.decisions)){ const st=sortState(d); if(st==="seen")seen++; else if(st==="disliked")dis++ } return {seen,dis} }
 function sortCountText(){ const c=sortCounts(); return `${fmt(c.seen)} watched · ${fmt(c.dis)} didn't like` }
-function renderSort(){
-  const pool=sortPool(), shown=pool.slice(0,S.sortLimit);
-  return `<div class="section-head"><div><h2>Quick sort</h2><p>Tap anything you've already seen so it never comes up as a pick. Tap again if you didn't like it, and a third time to clear. Untapped titles don't count either way. These are the most-rated titles, the ones you're likeliest to have seen.</p></div><div class="qs-count" id="qsCount">${sortCountText()}</div></div>
-    <div class="filters" role="group" aria-label="Show">${SORT_FILTERS.map(([id,l])=>`<button class="chip ${S.sortFilter===id?"sel":""}" data-sortf="${id}">${l}</button>`).join("")}</div>
-    <div class="qs-legend"><span><i class="seen"></i>Watched</span><span><i class="disliked"></i>Watched, didn't like it</span></div>
-    <div class="qs-grid">${shown.map(sortTile).join("")}</div>
+function renderSortResults(){
+  const pool=sortPool(), shown=pool.slice(0,S.sortLimit), q=S.sortQuery.trim();
+  if(q&&!pool.length) return `<div class="empty">No titles on Netflix US match "${esc(q)}". Try fewer words, or switch the filter to All.</div>`;
+  return `${q?`<p class="qs-found">${fmt(pool.length)} ${pool.length===1?"title matches":"titles match"} "${esc(q)}"</p>`:""}<div class="qs-grid">${shown.map(sortTile).join("")}</div>
     ${pool.length>shown.length?`<div class="qs-more"><button class="btn" data-sortmore="1">Show ${Math.min(40,pool.length-shown.length)} more</button><span>${fmt(shown.length)} of ${fmt(pool.length)}</span></div>`:""}`;
+}
+function renderSort(){
+  return `<div class="section-head"><div><h2>Quick sort</h2><p>Tap anything you've already seen so it never comes up as a pick. Tap again if you didn't like it, and a third time to clear. Untapped titles don't count either way. Below are the most-rated titles, or search for a specific one.</p></div><div class="qs-count" id="qsCount">${sortCountText()}</div></div>
+    <div class="qs-search"><input type="search" id="qsSearch" placeholder="Search titles, e.g. Squid Game" value="${esc(S.sortQuery)}" autocomplete="off" aria-label="Search titles"></div>
+    <div class="filters" role="group" aria-label="Show">${SORT_FILTERS.map(([id,l])=>`<button class="chip ${S.sortFilter===id?"sel":""}" data-sortf="${id}">${l}</button>`).join("")}</div>
+    <div class="qs-legend"><span><i class="seen"></i>Watched</span><span><i class="disliked"></i>Watched, didn't like it</span><span><i class="other"></i>Already in another list (tap to mark watched)</span></div>
+    <div id="qsResults">${renderSortResults()}</div>`;
 }
 function cycleSort(key){
   const t=S.byKey.get(key); if(!t) return;
   const st=sortState(S.decisions[key]);
-  const next = st==="none" ? decisionRec(t,"seen",null,null,["Quick sort"]) : st==="seen" ? decisionRec(t,"pass","tried",null,["Quick sort"]) : null;
+  const next = st==="none"||st==="other" ? decisionRec(t,"seen",null,null,["Quick sort"]) : st==="seen" ? decisionRec(t,"pass","tried",null,["Quick sort"]) : null;
   Store.write(key,next);
   // update just this tile and the counts, so the grid doesn't jump
   const el=document.querySelector(`[data-qs="${key}"]`); if(el) el.outerHTML=sortTile(t);
@@ -1062,7 +1082,7 @@ document.addEventListener("click",async e=>{
   if(d.pf){ S.passFilter=d.pf; render(); return }
   if(d.qs){ cycleSort(d.qs); return }
   if(d.sortf){ S.sortFilter=d.sortf; S.sortLimit=40; render(); return }
-  if(d.sortmore){ S.sortLimit+=40; render(); return }
+  if(d.sortmore){ S.sortLimit+=40; $("#qsResults").innerHTML=renderSortResults(); return }
   if(d.sortstart||d.sortdismiss){ P.sortPrompted=true; Store.savePrefs(); if(d.sortstart){ S.tab="sort"; window.scrollTo(0,0) } render(); return }
   if(d.forget){ P.forgotten=[...new Set([...P.forgotten,d.forget])]; Store.savePrefs(); render(); return }
   if(d.unforget){ P.forgotten=P.forgotten.filter(k=>k!==d.unforget); Store.savePrefs(); render(); return }
@@ -1074,6 +1094,8 @@ document.addEventListener("click",async e=>{
   }
 });
 document.addEventListener("input",e=>{
+  // search updates only the results, so the box keeps focus while typing
+  if(e.target.id==="qsSearch"){ S.sortQuery=e.target.value; S.sortLimit=40; $("#qsResults").innerHTML=renderSortResults(); return }
   const el=e.target, P=S.prefs;
   if(["explore","minRating","minVotes"].includes(el.id)){ P[el.id]=+el.value; Store.savePrefs(); const v=el.parentElement.querySelector(".val"); if(v) v.textContent=el.id==="explore"?Math.round(P.explore*100)+"%":P.minVotes }
   if(el.id==="minRating"){ $("#scoreOut").textContent=scoreText(); $("#poolLine").textContent=fmt(eligible().length)+" unseen titles match right now"; }
