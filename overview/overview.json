@@ -1,0 +1,39 @@
+{
+  "version": 3,
+  "name": "Off Script",
+  "tagline": "A Netflix picker",
+  "pitch": "One big button picks a random title from all of Netflix US, and learns what you don't want, not what's trending.",
+  "accent": "#d98a1f",
+  "status": "Live",
+
+  "problem": "Recommendation feeds keep showing you more of the same.",
+  "stats": [
+    { "value": "8,273", "label": "titles: the whole Netflix US catalog" },
+    { "value": "10", "label": "reasons to say not interested" },
+    { "value": "0", "label": "popularity or trending data used" }
+  ],
+
+  "features": [
+    { "title": "Say why not", "text": "Each not-interested reason quietly lowers the odds of similar titles.",
+      "details": ["From not my genre to too long a commitment", "Lowered, never ruled out, and fading by half in six months", "One pick in five is a wildcard that ignores it all"],
+      "screen": { "src": "reasons.png", "alt": "A pick, Charlotte, a Japanese series rated 8.2, beside the Why not panel of reasons: genre, tone, look and feel, origin and mood" } },
+    { "title": "Keep track", "text": "Mark a pick as watching, watched, maybe later or not interested.",
+      "details": ["Lists for later, passed, in progress and watched", "Synced to your Google account when you sign in"],
+      "screen": { "src": "pick.png", "alt": "A pick card with its rating, a summary, links to Netflix, IMDb and TMDB, and buttons to mark it" } },
+    { "title": "Pick by mood or place", "text": "Choose categories around the button: Asia, Dark, Laughs, Era and more.",
+      "details": ["Within a group choices widen; across groups they narrow", "Films, series or both, and a minimum score"] },
+    { "title": "Always current", "text": "The catalog refreshes itself on the 1st of every month.",
+      "details": ["All picking happens in your browser"] }
+  ],
+
+  "screens": [
+    { "src": "desktop.png", "alt": "Off Script: a big Hit me button ringed by categories like Asia, Europe, Dark, Heart, Laughs and Mood, with filters for length and score", "caption": "One button, and the categories around it" }
+  ],
+
+  "facts": {
+    "worksOn": "Desktop browsers",
+    "data": "In your browser, or synced",
+    "builtWith": "One HTML file and a catalog",
+    "started": "Oct 2026"
+  }
+}

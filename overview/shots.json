@@ -1,0 +1,48 @@
+{
+  "url": "https://jkw2lo.github.io/off-script/",
+  "shots": [
+    {
+      "file": "desktop.png",
+      "settle": 2000,
+      "steps": [
+        "eval:{ const b = [...document.querySelectorAll('button')].find(b => b.offsetParent && b.textContent.trim().replace(/\\s+/g,' ').startsWith(\"Not now\")); if (b) b.click(); }",
+        "wait:300"
+      ]
+    },
+    {
+      "file": "pick.png",
+      "scale": 2,
+      "settle": 2000,
+      "steps": [
+        "eval:{ const b = [...document.querySelectorAll('button')].find(b => b.offsetParent && b.textContent.trim().replace(/\\s+/g,' ').startsWith(\"Not now\")); if (b) b.click(); }",
+        "wait:300",
+        "eval:{ const b = [...document.querySelectorAll('button')].find(b => b.offsetParent && b.textContent.trim().replace(/\\s+/g,' ').startsWith(\"Asia\")); if (b) b.click(); }",
+        "eval:/* a fixed seed, so the pick is the same every time */ let s = 7; Math.random = () => (s = s * 16807 % 2147483647) / 2147483647;",
+        "eval:{ const b = [...document.querySelectorAll('button')].find(b => b.offsetParent && b.textContent.trim().replace(/\\s+/g,' ').startsWith(\"Hit me\")); if (b) b.click(); }",
+        "wait:2500",
+        "eval:document.activeElement && document.activeElement.blur()"
+      ],
+      "clip": "#pickCard",
+      "pad": 0
+    },
+    {
+      "file": "reasons.png",
+      "scale": 2,
+      "settle": 2000,
+      "steps": [
+        "eval:{ const b = [...document.querySelectorAll('button')].find(b => b.offsetParent && b.textContent.trim().replace(/\\s+/g,' ').startsWith(\"Not now\")); if (b) b.click(); }",
+        "wait:300",
+        "eval:{ const b = [...document.querySelectorAll('button')].find(b => b.offsetParent && b.textContent.trim().replace(/\\s+/g,' ').startsWith(\"Asia\")); if (b) b.click(); }",
+        "eval:/* a fixed seed, so the pick is the same every time */ let s = 7; Math.random = () => (s = s * 16807 % 2147483647) / 2147483647;",
+        "eval:{ const b = [...document.querySelectorAll('button')].find(b => b.offsetParent && b.textContent.trim().replace(/\\s+/g,' ').startsWith(\"Hit me\")); if (b) b.click(); }",
+        "wait:2500",
+        "eval:document.activeElement && document.activeElement.blur()",
+        "eval:{ const b = [...document.querySelectorAll('button')].find(b => b.offsetParent && b.textContent.trim().replace(/\\s+/g,' ').startsWith(\"Not interested\")); if (b) b.click(); }",
+        "wait:800",
+        "eval:document.activeElement && document.activeElement.blur()"
+      ],
+      "clip": ".modal-inner",
+      "pad": 0
+    }
+  ]
+}
